@@ -1,11 +1,14 @@
 var ffi = require('../ffi');
 var u = require('./utility');
 var D = u.descriptor;
-var Pointer = ffi.Pointer;;
+var Pointer = ffi.Pointer;
 
 
 module.exports.Type = Type;
 module.exports.Data = Data;
+
+// circular dependency
+var ArrayType = require('./array');
 
 
 /**
@@ -20,7 +23,7 @@ Type.prototype = Data;
 function Data(){ throw new Error('Abstract method called') }
 
 Data.array = function array(n){
-  //return array type for n
+  return new ArrayType(this._DataType, n);
 }
 
 
@@ -38,7 +41,6 @@ Data.prototype.update = function update(val){
 }
 
 
-
 /**
  * Template reused below.
  */
@@ -49,12 +51,16 @@ function DataType(v){
 }
 
 
-
 /**
  * This function ecapsulates the setup for both the Type and Data of a given number type
  */
 
 function setupDataType(name){
+
+
+  // #########################################
+  // ### Numeric Type instance constructor ###
+  // #########################################
 
   var type = eval(('('+DataType+')').replace('DataType', name));
   type.__proto__ = Type;
@@ -76,6 +82,12 @@ function setupDataType(name){
   }
 
   function IsSame(u){
+    // Not quite clear on this one yet
+
+    // return type === u._DataType;  ?
+    // - or -
+    // return type._DataType === u._DataType._DataType;  ?
+    // - or -
     return type._DataType === u._DataType;
   }
 
@@ -160,3 +172,5 @@ function setupDataType(name){
   'int8', 'int16', 'int32', 'int64',
   'float32', 'float64'
 ].reduce(function(ret, type){ ret[type] = setupDataType(type); return ret }, module.exports);
+
+
