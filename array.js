@@ -72,8 +72,7 @@ function ArrayType(elementType, length) {
   }
 
   /**
-   * Convert a block of data into a 
-   * @param {[type]} R [description]
+   * Wrap block of data as array
    */
   function Reify(R){
     return ArrayReference(ctor, R);
