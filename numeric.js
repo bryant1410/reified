@@ -7,13 +7,14 @@ var Type = require('./genesis').Type;
 var Data = require('./genesis').Data;
 var NumberBlock = require('./blocks').NumberBlock;
 var ArrayType = require('./array');
+var pointerMethods = require('./blocks').pointerMethods;
 
-
-
-[ 'uint8', 'uint16', 'uint32', 'uint64',
-  'int8', 'int16', 'int32', 'int64',
-  'float32', 'float64'
-].forEach(function(type){ exports[type] = setupDataType(type) });
+var ffiTypes =
+[ 'UInt8', 'Int8', 'Int16', 'UInt16', 'Int32', 'UInt32', 'Int64', 'UInt64', 'Float'  , 'Double' ];
+[ 'uint8', 'int8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64'].forEach(function(type, i){
+  exports[type] = setupDataType(type);
+  pointerMethods(type, ffiTypes[i]);
+});
 
 
 
@@ -112,13 +113,13 @@ function setupDataType(name){
    * during various proxies for normal js'ish usage. This is a prime target for wrapping using Harmony Proxies.
    */
   Object.defineProperties(type, {
-    _Class:    D.E__('DataType'),
-    _DataType: D.E__(name),
-    _Convert:  D.E__(Convert),
-    _Cast:     D.E__(Cast),
-    _CCast:    D.E__(CCast),
-    _Reify:    D.E__(Reify),
-    _IsSame:   D.E__(IsSame),
+    _Class:    D.___('DataType'),
+    _DataType: D.___(name),
+    _Convert:  D.___(Convert),
+    _Cast:     D.___(Cast),
+    _CCast:    D.___(CCast),
+    _Reify:    D.___(Reify),
+    _IsSame:   D.___(IsSame),
     bytes:     D.E__(ffi.sizeOf(name))
   });
 

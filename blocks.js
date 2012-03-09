@@ -8,42 +8,41 @@ var Block = require('./genesis').Block;
 
 module.exports = {
   NumberBlock: NumberBlock,
-  ArrayBlock: ArrayBlock
-}
+  ArrayBlock: ArrayBlock,
+  pointerMethods: pointerMethods
+};
 
 
 var NumericTypes = require('./numeric');
 
 
-
-var refs = {};
-
-function pointerHandler(type, ptr){
-  if (!(type in refs)) {
-    var name = ffi.TYPE_TO_POINTER_METHOD_MAP[type];
-    refs[type] = function(ptr){
-      return { get: function(){ return ptr['get'+name]() },
-               set: function(v){ ptr['put'+name](v) } };
-    }
-  }
-  return refs[type](ptr);
+function pointerMethods(type, pointerName){
+  var get = Pointer.prototype['get'+pointerName];
+  var set = Pointer.prototype['put'+pointerName];
+  accessors[type] = {
+    get: function(p){ return get.call(p) },
+    set: function(p, v){ return set.call(p, v) }
+  };
 }
+
+
+var accessors = {};
 
 function NumberBlock(type, val){
   if (val instanceof NumberBlock) return val.cast(type);
-  var self = this;
   var ptr = Pointer.isPointer(val) ? val : Pointer.alloc(type, val || 0);
-  var accessors = pointerHandler(type, ptr);
-  this.write = accessors.set;
-  this.deref = accessors.get;
-  this.type = type;
-  this.get = function(){ return self }
-  this.clone = function(){ return new NumberBlock(type, ptr.clone()) }
-  this.cast = function(type){ return new NumberBlock(t, ptr.clone()) }
+  Object.defineProperties(this, {
+    pointer: D.___(ptr),
+    type: D.ECW(type),
+  });
 }
-NumberBlock.__proto__ = Block;
 
-
+NumberBlock.prototype = Object.create(Block, {
+  write: D._CW(function write(v){ accessors[this.type].set(this.pointer, v) }),
+  deref: D._CW(function deref(){ return accessors[this.type].get(this.pointer) }),
+  clone: D._CW(function clone(){ return new NumberBlock(this.type, this.pointer.clone()) }),
+  cast:  D._CW(function cast(type){ return new NumberBlock(type, this.pointer.clone()) }),
+});
 
 
 
@@ -55,16 +54,21 @@ function ArrayBlock(type, length, vals){
   var bytes = ffi.sizeOf(type);
   var ptr = Pointer.isPointer(vals) ? vals : new Pointer(bytes * length);
   var blockType = type in NumericTypes ? NumberBlock : null;
-  var self = this;
-  this.type = type;
-  this.length = length;
-  this.get = function(){ return self };
-  this.clone = function(){ return new ArrayBlock(type, length, ptr) };
+
+  Object.defineProperties(this, {
+    type:      D.ECW(type),
+    pointer:   D.___(ptr),
+    length:    D.___(length),
+  });
 
   Array.apply(null, Array(length)).forEach(function(v,i){
-    self[i] = new blockType(type, ptr.seek(i * bytes));
-  });
+    this[i] = new blockType(type, ptr.seek(i * bytes));
+  }, this);
 }
 
 
-ArrayBlock.__proto__ = Block;
+
+
+ArrayBlock.prototype = Object.create(Block, {
+  clone: D._CW(function clone(){ return new ArrayBlock(this.type, this.length, this.pointer.clone()) }),
+});

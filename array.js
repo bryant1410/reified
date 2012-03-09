@@ -119,10 +119,10 @@ ArrayType.prototype = function(){}
 ArrayType.prototype.__proto__ = Type.prototype;
 
 Object.defineProperties(ArrayType.prototype, {
-  constructor: D.ECW(ArrayType),
+  constructor: D._CW(ArrayType),
   repeat:      D.ECW(repeat),
   prototype:   D.___(Object.create(Data.prototype, {
-    constructor: D.ECW(ArrayType.prototype),
+    constructor: D._CW(ArrayType.prototype),
     forEach:     D.ECW(Array.prototype.forEach),
     //subarray TODO
   })),
@@ -149,10 +149,10 @@ function ArrayReference(type, data, val){
 
 
   Object.defineProperties(data, {
-    _Class:    D.E__('Data'),
-    _Value:    D.E__(new ArrayBlock(elementType._DataType, type._Length)),
-    _DataType: D.E__(type),
-    length:    D.E__(type._Length),
+    _Class:    D.___('Data'),
+    _Value:    D.___(new ArrayBlock(elementType._DataType, type._Length)),
+    _DataType: D.___(type),
+    length:    D.___(type._Length),
   });
 
   Array.apply(null, Array(type._Length)).forEach(function(v,i){
