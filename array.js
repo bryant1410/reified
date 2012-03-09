@@ -1,9 +1,10 @@
 var ffi = require('../ffi');
 var U = require('./utility');
 var D = U.descriptor;
-var Pointer = ffi.Pointer;;
-var types = require('./types');
+var Pointer = ffi.Pointer;
 
+var Type = require('./genesis').Type;
+var Data = require('./genesis').Data;
 
 module.exports = ArrayType;
 
@@ -103,7 +104,6 @@ function ArrayType(elementType, length) {
   return ctor;
 }
 
-
 // #######################################
 // #######################################
 // ### ArrayType constructor prototype ###
@@ -112,12 +112,12 @@ function ArrayType(elementType, length) {
 
 ArrayType.prototype = function(){ }
 
-ArrayType.prototype.__proto__ = types.Type.prototype;
+ArrayType.prototype.__proto__ = Type.prototype;
 
 Object.defineProperties(ArrayType.prototype, {
   constructor: D._CW(ArrayType),
   repeat:      D._CW(repeat),
-  prototype:   D.___(Object.create(types.Data.prototype, {
+  prototype:   D.___(Object.create(Data.prototype, {
     constructor: D._CW(ArrayType.prototype),
     forEach:     D._CW(Array.prototype.forEach),
     //subarray TODO
@@ -146,7 +146,7 @@ function repeat(val){
  */
 function ArrayReference(type, n){
   var data = function(){}
-  data.__proto__ = types.Data;
+  data.__proto__ = Data;
 
   return Object.defineProperties(data, {
     _Class:    D.___('Data'),
