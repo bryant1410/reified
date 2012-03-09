@@ -5,6 +5,8 @@ var Pointer = ffi.Pointer;
 
 var Type = require('./genesis').Type;
 var Data = require('./genesis').Data;
+var NumericTypes = require('./numeric');
+var ArrayBlock = require('./blocks').ArrayBlock;
 
 module.exports = ArrayType;
 
@@ -21,7 +23,9 @@ function ArrayType(elementType, length) {
   // ### ArrayType instance constructor ###
   // ######################################
 
-  var ctor = function(){}
+  var ctor = function(val){
+    ArrayReference(ctor, this, val);
+  }
   ctor.__proto__ = ArrayType.prototype;
 
   Object.defineProperties(ctor, {
@@ -33,8 +37,7 @@ function ArrayType(elementType, length) {
     _IsSame:      D.___(IsSame),
     _Reify:       D.___(Reify),
     elementType:  D.ECW(elementType),
-    length:       D.ECW(length),
-    bytes:        D.ECW(elemenType.bytes * length)
+    bytes:        D.ECW(elementType.bytes * length)
   });
 
   /**
@@ -50,20 +53,14 @@ function ArrayType(elementType, length) {
     if (!U.isObject(val)) {
       throw new TypeError('Primitive and wrong data type');
     }
-    var u = ctor._ElementType;
-    var n = ctor._Length;
-    var L = val.length;
-    if (!(typeof L === 'number') || L !== n) {
-      throw new TypeError('Length needs to be a number');
+    if (!(typeof val.length === 'number') || val.length !== ctor._Length) {
+      throw new TypeError('Lengths needs to be same');
     }
-    var R = ArrayReference(u, n);
-    Array.apply(null, Array(n)).forEach(function(k,i){
-      var V = val[i];
-      var W = u._Convert(V);
-      //var deRefed = W._Value['get' + ffi.TYPE_TO_POINTER_METHOD_MAP[W._DataType]](W);
-      R._Value._putPointer(W, i * u.bytes);
+
+    var vals = Array.apply(null, Array(ctor._Length)).map(function(k,i){
+      return ctor._ElementType._Convert(val[i]);
     });
-    return R;
+    return new ctor(vals);
   }
 
   function IsSame(u){
@@ -76,8 +73,14 @@ function ArrayType(elementType, length) {
    * Wrap block of data as array
    */
   function Reify(R){
-    return ArrayReference(ctor, R);
+    return Object.create(ctor.prototype, {
+      _Class:    D.___('Data'),
+      _Value:    D.___(R),
+      _DataType: D.___(ctor),
+      length:    D.E__(ctor._Length),
+    });
   }
+
 
 
   // ####################################
@@ -94,9 +97,10 @@ function ArrayType(elementType, length) {
     if (i.isObject(this) || thos._Class !== 'Data' || !this._DataType._IsSame(ctor)) {
       throw new TypeError('Method is not generic');
     }
-    Array.apply(null, Array(ctor._Length)).forEach(function(s,i){
-      var R = ctor._ElementType._Convert(val);
-      this._putPointer(R, i * ctor._DataType.bytes);
+
+    Array.apply(null, Array(this._Length)).forEach(function(v,i){
+      var R = self._ElementType._Convert(val);
+      self[i] = R._Value;
     }, this);
   }
 
@@ -110,16 +114,16 @@ function ArrayType(elementType, length) {
 // #######################################
 // #######################################
 
-ArrayType.prototype = function(){ }
+ArrayType.prototype = function(){}
 
 ArrayType.prototype.__proto__ = Type.prototype;
 
 Object.defineProperties(ArrayType.prototype, {
-  constructor: D._CW(ArrayType),
-  repeat:      D._CW(repeat),
+  constructor: D.ECW(ArrayType),
+  repeat:      D.ECW(repeat),
   prototype:   D.___(Object.create(Data.prototype, {
-    constructor: D._CW(ArrayType.prototype),
-    forEach:     D._CW(Array.prototype.forEach),
+    constructor: D.ECW(ArrayType.prototype),
+    forEach:     D.ECW(Array.prototype.forEach),
     //subarray TODO
   })),
 });
@@ -129,29 +133,41 @@ function repeat(val){
   if (!U.isObject(this) || this._Class !== 'DataType' || this._DataType !== 'array') {
     throw new TypeError('Method is not generic');
   }
-  var V = Object.create(this);
-  Array.apply(null, Array(this._Length)).forEach(function(v,i){
-    var R = this._ElementType._Convert(val);
-    var deRefed = R._Value['get' + ffi.TYPE_TO_POINTER_METHOD_MAP[R._DataType]](val);
-    V[i]._Value = new Pointer(ffi.sizeOf(deRefed));
-    V[i]._Value._putPointer(deRefed);
-  });
+  var V = new this;
+  V.fill(val);
+  return V;
 }
-
 
 
 
 /**
  * Array data block instance. Pointer holder.
  */
-function ArrayReference(type, n){
-  var data = function(){}
-  data.__proto__ = Data;
+function ArrayReference(type, data, val){
+  var elementType = type._ElementType;
+  var bytes = elementType.bytes;
 
-  return Object.defineProperties(data, {
-    _Class:    D.___('Data'),
-    _Value:    typeof n === 'number' ? D.___(new Pointer(type.bytes * n)) : n,
-    _DataType: D.___(type),
+
+  Object.defineProperties(data, {
+    _Class:    D.E__('Data'),
+    _Value:    D.E__(new ArrayBlock(elementType._DataType, type._Length)),
+    _DataType: D.E__(type),
+    length:    D.E__(type._Length),
   });
-}
 
+  Array.apply(null, Array(type._Length)).forEach(function(v,i){
+    Object.defineProperty(data, i, {
+      enumerable: true, configurable: true,
+      get: function(){
+        return elementType._Reify(data._Value[i]);
+      },
+      set: function(v){
+        var R = elementType._Convert(v);
+        data._Value[i].write(R._Value.deref());
+      }
+    });
+    data[i] = val ? val[i] : 0;
+  });
+
+  return data;
+}

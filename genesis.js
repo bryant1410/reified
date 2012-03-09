@@ -2,7 +2,8 @@ var D = require('./utility').descriptor;
 
 module.exports = {
 	Type: Type,
-	Data: Data
+	Data: Data,
+  Block: Block
 };
 
 var ArrayType = require('./array');
@@ -52,3 +53,11 @@ function update(val){
   this._Value = new Pointer(this.bytes);
   this._Value._putPointer(deRefed);
 }
+
+
+
+function Block(){}
+
+Object.defineProperties(Block,{
+  _Class:    D.___('Block'),
+});

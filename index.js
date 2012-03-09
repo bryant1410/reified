@@ -3,4 +3,8 @@ module.exports = {
   ArrayType: require('./array')
 };
 
-console.log(module.exports)
+//var ArrayType = require('./array');
+//var Numeric = require('./numeric');
+//for (var k in Numeric) eval('var '+k+' = Numeric.'+k);
+//var RGB = new ArrayType(int16, 3);
+//var dsb = new RGB();

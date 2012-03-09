@@ -4,7 +4,8 @@ var D = u.descriptor;
 var Pointer = ffi.Pointer;
 
 var Type = require('./genesis').Type;
-var Data = require('./genesis').Type;
+var Data = require('./genesis').Data;
+var NumberBlock = require('./blocks').NumberBlock;
 var ArrayType = require('./array');
 
 
@@ -21,7 +22,7 @@ var ArrayType = require('./array');
  */
 function NumericType(v){
   var x = type._Cast(v);
-  var R = Pointer.alloc(name, x);
+  var R = new NumberBlock(name, x);
   return type._Reify(R);
 }
 
@@ -43,11 +44,11 @@ function setupDataType(name){
    */
   function Convert(val){
     if (typeof val === 'boolean') {
-      val = +val;
-    } else if (val._DataType._DataType === 'int64' || val._DataType._DataType === 'uint64') {
+      val = new NumberBlock(name, +val);
+    } else if (val._DataType === 'int64' || val._DataType === 'uint64') {
       val = val._Value;
     } else if (typeof val === 'number') {
-      val = Pointer.alloc(name, val);
+      val = new NumberBlock(name, val);
     } else {
       throw new TypeError('Invalid value');
     }
@@ -71,7 +72,7 @@ function setupDataType(name){
     if (typeof n === 'string' && n > 0) n = +n;
     try {
       var V = type._Convert(val);
-      return ffi.derefValuePtr(name, V._Value);
+      return V._Value.deref();
     } catch (e) {}
 
     if (val === Infinity || val !== val) { //NaN
@@ -91,16 +92,16 @@ function setupDataType(name){
     if (typeof n === 'string' && n > 0) n = +n;
     var byteSize = u.bitsFor(n) / 8;
     if (byteSize > type.bytes) throw new RangeError('This many bytes is too big, get less bytes');
-    return Pointer.alloc(name, n);
+    return new NumberBlock(name, n);
   }
 
   /**
    * Turn a reference back into a normal js value (or still wrapped in the case of 64 bit ints)
    */
   function Reify(R) {
-    var x = ffi.derefValuePtr(name, R);
+    var x = R.deref();
     if (name === 'uint64' || name === 'int64') {
-      return Reference(x);
+      return Reference(new NumberBlock(name, x));
     } else {
       return x;
     }
@@ -111,13 +112,13 @@ function setupDataType(name){
    * during various proxies for normal js'ish usage. This is a prime target for wrapping using Harmony Proxies.
    */
   Object.defineProperties(type, {
-    _Class:    D.___('DataType'),
-    _DataType: D.___(name),
-    _Convert:  D.___(Convert),
-    _Cast:     D.___(Cast),
-    _CCast:    D.___(CCast),
-    _Reify:    D.___(Reify),
-    _IsSame:   D.___(IsSame),
+    _Class:    D.E__('DataType'),
+    _DataType: D.E__(name),
+    _Convert:  D.E__(Convert),
+    _Cast:     D.E__(Cast),
+    _CCast:    D.E__(CCast),
+    _Reify:    D.E__(Reify),
+    _IsSame:   D.E__(IsSame),
     bytes:     D.E__(ffi.sizeOf(name))
   });
 
@@ -128,7 +129,6 @@ function setupDataType(name){
    */
   function Reference(val){
     var data = function(){}
-    data.__proto__ = Data;
 
     return Object.defineProperties(data, {
       _Class:    D.___('Data'),
