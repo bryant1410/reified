@@ -4,5 +4,3 @@ module.exports = {
   ArrayType:    require('./lib/array'),
 }
 
-
-console.log(module.exports)
