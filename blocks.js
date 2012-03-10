@@ -9,6 +9,7 @@ var Block = require('./genesis').Block;
 module.exports = {
   NumberBlock: NumberBlock,
   ArrayBlock: ArrayBlock,
+  StructBlock: StructBlock,
   pointerMethods: pointerMethods
 };
 
@@ -28,6 +29,11 @@ function pointerMethods(type, pointerName){
 
 var accessors = {};
 
+
+function getBlockType(type){
+  return type in NumericTypes ? NumberBlock : '_ElementType' in type ? ArrayBlock : StructBlock;
+}
+
 function NumberBlock(type, val){
   if (val instanceof NumberBlock) return val.cast(type);
   var ptr = Pointer.isPointer(val) ? val : Pointer.alloc(type, val || 0);
@@ -45,15 +51,13 @@ NumberBlock.prototype = Object.create(Block, {
 });
 
 
-
-
 function ArrayBlock(type, length, vals){
   if (type._Class === 'DataType') {
     type = type._ElementType._DataType;
   }
-  var bytes = ffi.sizeOf(type);
+  var bytes = Data.sizeOf(type);
   var ptr = Pointer.isPointer(vals) ? vals : new Pointer(bytes * length);
-  var blockType = type in NumericTypes ? NumberBlock : null;
+  var blockType = getBlockType(type);
 
   Object.defineProperties(this, {
     type:      D.ECW(type),
@@ -67,8 +71,22 @@ function ArrayBlock(type, length, vals){
 }
 
 
-
-
 ArrayBlock.prototype = Object.create(Block, {
   clone: D._CW(function clone(){ return new ArrayBlock(this.type, this.length, this.pointer.clone()) }),
 });
+
+
+function StructBlock(type, vals){
+  var ptr = Pointer.isPointer(vals) ? vals : new Pointer(type.bytes);
+  Object.defineProperties(this, {
+    pointer: D.___(ptr),
+  });
+  var self = this;
+  Object.keys(type.fields).reduce(function(offset, field){
+    var dataType = type.fields[field]._DataType;
+    var blockType = getBlockType(dataType);
+    self[field] = new blockType(dataType, ptr.seek(offset));
+    if (vals) self[field].write(vals[field]);
+    return offset + type.fields[field].bytes;
+  }, 0);
+}

@@ -9,13 +9,19 @@ var NumberBlock = require('./blocks').NumberBlock;
 var ArrayType = require('./array');
 var pointerMethods = require('./blocks').pointerMethods;
 
+var sizes = ffi.Bindings.TYPE_SIZE_MAP;
+
+function sizeOf(type){
+  return sizes[type];
+}
+Data.sizeOf = sizeOf;
+
 var ffiTypes =
 [ 'UInt8', 'Int8', 'Int16', 'UInt16', 'Int32', 'UInt32', 'Int64', 'UInt64', 'Float'  , 'Double' ];
 [ 'uint8', 'int8', 'int16', 'uint16', 'int32', 'uint32', 'int64', 'uint64', 'float32', 'float64'].forEach(function(type, i){
   exports[type] = setupDataType(type);
   pointerMethods(type, ffiTypes[i]);
 });
-
 
 
 /**
@@ -120,7 +126,7 @@ function setupDataType(name){
     _CCast:    D.___(CCast),
     _Reify:    D.___(Reify),
     _IsSame:   D.___(IsSame),
-    bytes:     D.E__(ffi.sizeOf(name))
+    bytes:     D.E__(sizeOf(name))
   });
 
 
