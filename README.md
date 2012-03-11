@@ -16,26 +16,27 @@ http://wiki.ecmascript.org/doku.php?id=harmony:binary_data_semantics
 
 ## API
 
-* NumericTypes - Each a constructor with the form of `new type(value, buffer)`
-  * int8    : 1 bytes
-  * uint8   : 1 bytes
-  * int16   : 2 bytes
-  * uint16  : 2 bytes
-  * int32   : 4 bytes
-  * uint32  : 4 bytes
-  * int64   : 8 bytes
-  * uint64  : 8 bytes
-  * float32 : 4 bytes
-  * float64 : 8 bytes
+* __NumericTypes__ - Each a constructor with the form of `new type(value, buffer)`
+  * __int8__    - 1 bytes
+  * __uint8__   - 1 bytes
+  * __int16__   - 2 bytes
+  * __uint16__  - 2 bytes
+  * __int32__   - 4 bytes
+  * __uint32__  - 4 bytes
+  * __int64__   - 8 bytes
+  * __uint64__  - 8 bytes
+  * __float32__ - 4 bytes
+  * __float64__ - 8 bytes
 
-* StructType
-* ArrayType
+* __StructType__ - A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
 
-* Blocks - These represent the layer closest to the raw data. They encapsulate the information needed
+* __ArrayType__ - A constructor constructor for array types. These are containers for multiples values that are of the same type (same memory size footprint).
+
+* __Blocks__ - These represent the layer closest to the raw data. They encapsulate the information needed
            to read and modify the memory associated with a higher level construct.
-  * NumberBlock - Represents a single number's memory from the NumericTypes.
-  * StructBlock - Represents an instance of a specific struct type and its mapping to and from memory
-  * ArrayBlock - Represents an instance of an array and its mapping to and from memory.
+  * __NumberBlock__ - Represents a single number's memory from the NumericTypes.
+  * __StructBlock__ - Represents an instance of a specific struct type and its mapping to and from memory
+  * __ArrayBlock__ - Represents an instance of an array and its mapping to and from memory.
 
 * Reference - A reference adds one level of indiraction to a provided value. In order to extract the value you have to back through the specific Referencer in order to dereference it. Also provides tools to make it easier to reference multiple values like arrays.
 
