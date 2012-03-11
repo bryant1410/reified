@@ -17,16 +17,10 @@ http://wiki.ecmascript.org/doku.php?id=harmony:binary_data_semantics
 ## API
 
 * __NumericTypes__ - Each a constructor with the form of `new type(value, buffer)`
-  * __int8__    - 1 bytes
-  * __uint8__   - 1 bytes
-  * __int16__   - 2 bytes
-  * __uint16__  - 2 bytes
-  * __int32__   - 4 bytes
-  * __uint32__  - 4 bytes
-  * __int64__   - 8 bytes
-  * __uint64__  - 8 bytes
-  * __float32__ - 4 bytes
-  * __float64__ - 8 bytes
+  * 1 byte  - `int8,  uint8`
+  * 2 bytes - `int16, uint16`
+  * 4 bytes - `int32, uint32, float32`
+  * 8 bytes - `int64, uint64, float64`
 
 * __StructType__ - A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
 
@@ -38,7 +32,7 @@ http://wiki.ecmascript.org/doku.php?id=harmony:binary_data_semantics
   * __StructBlock__ - Represents an instance of a specific struct type and its mapping to and from memory
   * __ArrayBlock__ - Represents an instance of an array and its mapping to and from memory.
 
-* Reference - A reference adds one level of indiraction to a provided value. In order to extract the value you have to back through the specific Referencer in order to dereference it. Also provides tools to make it easier to reference multiple values like arrays.
+* __Reference__ - A reference adds one level of indiraction to a provided value. In order to extract the value you have to dereference it via the Reference object that now has it stashed somewhere. Also provides tools to make it easier to reference multiple values like arrays.
 
 
 
