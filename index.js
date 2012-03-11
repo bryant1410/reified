@@ -5,5 +5,5 @@ module.exports = {
   NumberBlock:  require('./lib/blocks').NumberBlock,
   StructBlock:  require('./lib/blocks').StructBlock,
   ArrayBlock:   require('./lib/blocks').ArrayBlock,
-  Reference:    require('./lib/blocks').Reference,
+  Reference:    require('./lib/reference'),
 }
