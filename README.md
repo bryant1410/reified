@@ -17,23 +17,25 @@ http://wiki.ecmascript.org/doku.php?id=harmony:binary_data_semantics
 
 ## Conversions
 
+Not all in here yet and many belong in ffi, just notes for me for now.
 
-```
-Reify          ->          type A |to| JSobj
-Reify          ->      ref type A |to| JSobj
-Reify          ->  numeric type A |to| JSval
-Convert        ->           JSobj |to| type A                        alloc
-Cast           ->  numeric type A |to| numeric type B                reinterpret POD
-Cast           ->           JSval |to| numeric type A                reinterpret type B
-CCast          ->       any ref A |to| any ref B <= size A           replace ptr?
-CCast          ->  numeric type A |to| numeric type B, <= size A     reinterpret
-CCast          ->           JSval |to| to C, cast, reiify toJSval    alloc then free
-CCast          ->          type A |to| ?
-Deref          ->      ref type A |to| type A                        free?
-Deref          ->          type A |to| JSobj                         free?
-Deref          ->  numeric type A |to| JSval or error?
-Reference      ->           JSobj |to| JSobj ref outside heap?
-Reference      ->          type A |to| ref type A
-Reference      ->      ref type A |to| ref ref ?
-Type Construct ->           JSObj |to| type A
-```
+
+ API Function  | input           | output                      |  implementation
+---------------|-----------------|-----------------------------|-----------------------
+Reify          |          type A | JSobj                       |                    
+Reify          |      ref type A | JSobj                       |                    
+Reify          |  numeric type A | JSval                       |                    
+Convert        |           JSobj | type A                      |  alloc             
+Cast           |  numeric type A | numeric type B              |  reinterpret POD   
+Cast           |           JSval | numeric type A              |  reinterpret type B
+CCast          |       any ref A | any ref B <= size A         |  replace ptr?      
+CCast          |  numeric type A | numeric type B, <= size A   |  reinterpret       
+CCast          |           JSval | to C, cast, reiify toJSval  |  alloc then free   
+CCast          |          type A | ?                           |                    
+Deref          |      ref type A | type A                      |  free?             
+Deref          |          type A | JSobj                       |  free?             
+Deref          |  numeric type A | JSval or error?             |                    
+Reference      |           JSobj | JSobj ref outside heap?     |                    
+Reference      |          type A | ref type A                  |                    
+Reference      |      ref type A | ref ref ?                   |                    
+Type Construct |           JSObj | type A                      |                    
