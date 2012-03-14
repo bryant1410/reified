@@ -29,10 +29,9 @@ http://wiki.ecmascript.org/doku.php?id=harmony:binary_data_semantics
 
 ## Debug Dump Showing Usage
 
+### NumericType
 
-## NumericType
-
-### Instances
+#### Instances
 ```
 var int32 = new UInt32(10000000)
  <UInt32 10000000>
@@ -42,10 +41,9 @@ var int16 = new UInt16(int32)
 
 var int8 = new UInt8(int16)
  <UInt8 128>
-
 ```
 
-### Shared Data
+#### Shared Data
 ```
 int8.write(100)
  <UInt8 100>
@@ -58,12 +56,11 @@ int16
 
 int8
  <UInt8 100>
-
 ```
 
-## ArrayType
+### ArrayType
 
-### Simple
+#### Simple
 ```
 var RGBarray = new ArrayType('RGB', UInt8, 3)
 //-->
@@ -76,10 +73,9 @@ var RGBarray = new ArrayType('RGB', UInt8, 3)
 
 new RGBarray([0, 150, 255])
  [ [Array: RGB] <UInt8 0>, <UInt8 150>, <UInt8 255> ]
-
 ```
 
-### Multidimension
+#### Multidimension
 ```
 var int32x4 = new ArrayType(Int32, 4)
 //-->
@@ -148,13 +144,11 @@ new int32x4x4x2
  [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
  [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
  [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ] ]
-
-
 ```
 
-## StructType
+### StructType
 
-### Simple
+#### Simple
 ```
 var RGB = new StructType('RGB', { red: UInt8, green: UInt8, blue: UInt8 })
 //-->
@@ -177,7 +171,4 @@ var fuschia = new RGB({ red: 255, green: 0, blue: 255 })
 var deepSkyBlue = new RGB({ red: 0, green: 150, blue: 255 })
 //-->
 { [Struct: RGB] red: <UInt8 0>, green: <UInt8 150>, blue: <UInt8 255> }
-
-
 ```
-
