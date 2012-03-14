@@ -16,47 +16,168 @@ http://wiki.ecmascript.org/doku.php?id=harmony:binary_data_semantics
 
 ## API
 
-* __NumericTypes__ - Each a constructor with the form of `new type(value, buffer)`
-  * 1 byte  - `int8,  uint8`
-  * 2 bytes - `int16, uint16`
-  * 4 bytes - `int32, uint32, float32`
-  * 8 bytes - `int64, uint64, float64`
+* NumericTypes
+  * 1 byte  - `Int8,  Uint8`
+  * 2 bytes - `Int16, Uint16`
+  * 4 bytes - `Int32, Uint32, Float`
+  * 8 bytes - `Int64, Uint64, Double`
 
-* __StructType__ - A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
+* StructType - A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
 
-* __ArrayType__ - A constructor constructor for array types. These are containers for multiples values that are of the same type (same memory size footprint).
-
-* __Blocks__ - These represent the layer closest to the raw data. They encapsulate the information needed
-           to read and modify the memory associated with a higher level construct.
-  * __NumberBlock__ - Represents a single number's memory from the NumericTypes.
-  * __StructBlock__ - Represents an instance of a specific struct type and its mapping to and from memory
-  * __ArrayBlock__ - Represents an instance of an array and its mapping to and from memory.
-
-* __Reference__ - A reference adds one level of indiraction to a provided value. In order to extract the value you have to dereference it via the Reference object that now has it stashed somewhere. Also provides tools to make it easier to reference multiple values like arrays.
+* ArrayType - A constructor constructor for array types. These are containers for multiples values that are of the same type (same memory size footprint).
 
 
-
-## Conversions
-
-Not all in here yet and many belong in ffi, just notes for me for now.
+## Debug Dump Showing Usage
 
 
- API Function  | input           | output                      |  implementation
----------------|-----------------|-----------------------------|-----------------------
-Reify          |          type A | JSobj                       |                    
-Reify          |      ref type A | JSobj                       |                    
-Reify          |  numeric type A | JSval                       |                    
-Convert        |           JSobj | type A                      |  alloc             
-Cast           |  numeric type A | numeric type B              |  reinterpret POD   
-Cast           |           JSval | numeric type A              |  reinterpret type B
-CCast          |       any ref A | any ref B <= size A         |  replace ptr?      
-CCast          |  numeric type A | numeric type B, <= size A   |  reinterpret       
-CCast          |           JSval | to C, cast, reiify toJSval  |  alloc then free   
-CCast          |          type A | ?                           |                    
-Deref          |      ref type A | type A                      |  free?             
-Deref          |          type A | JSobj                       |  free?             
-Deref          |  numeric type A | JSval or error?             |                    
-Reference      |           JSobj | JSobj ref outside heap?     |                    
-Reference      |          type A | ref type A                  |                    
-Reference      |      ref type A | ref ref ?                   |                    
-Type Construct |           JSObj | type A                      |                    
+## NumericType
+
+### Instances
+```
+var int32 = new UInt32(10000000)
+ <UInt32 10000000>
+
+var int16 = new UInt16(int32)
+ <UInt16 38528>
+
+var int8 = new UInt8(int16)
+ <UInt8 128>
+
+```
+
+### Shared Data
+```
+int8.write(100)
+ <UInt8 100>
+
+int32
+ <UInt32 9999972>
+
+int16
+ <UInt16 38500>
+
+int8
+ <UInt8 100>
+
+```
+
+## ArrayType
+
+### Simple
+```
+var RGBarray = new ArrayType('RGB', UInt8, 3)
+//-->
+{ [Function: RGB]
+  isInstance: [Function: isInstance],
+  elementType: { [Function: UInt8] bytes: 1 },
+  bytes: 3,
+  count: 3 }
+
+
+new RGBarray([0, 150, 255])
+ [ [Array: RGB] <UInt8 0>, <UInt8 150>, <UInt8 255> ]
+
+```
+
+### Multidimension
+```
+var int32x4 = new ArrayType(Int32, 4)
+//-->
+{ [Function: Int32x4Array]
+  isInstance: [Function: isInstance],
+  elementType: { [Function: Int32] bytes: 4 },
+  bytes: 16,
+  count: 4 }
+
+
+var int32x4x4 = new ArrayType(int32x4, 4)
+//-->
+{ [Function: Int32x4x4Array]
+  isInstance: [Function: isInstance],
+  elementType: 
+   { [Function: Int32x4Array]
+     isInstance: [Function: isInstance],
+     elementType: { [Function: Int32] bytes: 4 },
+     bytes: 16,
+     count: 4 },
+  bytes: 64,
+  count: 4 }
+
+
+var int32x4x4x2 = new ArrayType(int32x4x4, 2)
+//-->
+{ [Function: Int32x4x4x2Array]
+  isInstance: [Function: isInstance],
+  elementType: 
+   { [Function: Int32x4x4Array]
+     isInstance: [Function: isInstance],
+     elementType: 
+      { [Function: Int32x4Array]
+        isInstance: [Function: isInstance],
+        elementType: [Object],
+        bytes: 16,
+        count: 4 },
+     bytes: 64,
+     count: 4 },
+  bytes: 128,
+  count: 2 }
+
+
+new int32x4
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ]
+
+new int32x4x4
+//-->
+[ [Array: Int32x4x4Array]
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ]
+
+
+new int32x4x4x2
+//-->
+[ [Array: Int32x4x4x2Array]
+ [ [Array: Int32x4x4Array]
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ],
+ [ [Array: Int32x4x4Array]
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+ [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ] ]
+
+
+```
+
+## StructType
+
+### Simple
+```
+var RGB = new StructType('RGB', { red: UInt8, green: UInt8, blue: UInt8 })
+//-->
+{ [Function: RGB]
+  isInstance: [Function: isInstance],
+  fields: 
+   { red: { [Function: UInt8] bytes: 1 },
+     green: { [Function: UInt8] bytes: 1 },
+     blue: { [Function: UInt8] bytes: 1 } },
+  offsets: { red: 0, green: 1, blue: 2 },
+  names: [ 'red', 'green', 'blue' ],
+  bytes: 3 }
+
+
+var fuschia = new RGB({ red: 255, green: 0, blue: 255 })
+//-->
+{ [Struct: RGB] red: <UInt8 255>, green: <UInt8 0>, blue: <UInt8 255> }
+
+
+var deepSkyBlue = new RGB({ red: 0, green: 150, blue: 255 })
+//-->
+{ [Struct: RGB] red: <UInt8 0>, green: <UInt8 150>, blue: <UInt8 255> }
+
+
+```
+
