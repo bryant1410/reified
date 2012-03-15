@@ -111,111 +111,99 @@ int8
 ```
 var RGBarray = new ArrayType('RGB', UInt8, 3)
 //-->
-{ [Function: RGB]
-  isInstance: [Function: isInstance],
-  elementType: { [Function: UInt8] bytes: 1 },
-  bytes: 3,
-  count: 3 }
+{ [Function: RGB] elementType: [UInt8: 1b], bytes: 3 }
 
 
 new RGBarray([0, 150, 255])
- [ [Array: RGB] <UInt8 0>, <UInt8 150>, <UInt8 255> ]
+ [ <RGB> <UInt8 0>, <UInt8 150>, <UInt8 255> ]
 ```
 
 #### Multidimension
 ```
 var int32x4 = new ArrayType(Int32, 4)
 //-->
-{ [Function: Int32x4Array]
-  isInstance: [Function: isInstance],
-  elementType: { [Function: Int32] bytes: 4 },
-  bytes: 16,
-  count: 4 }
+{ [Function: Int32x4] elementType: [Int32: 4b], bytes: 16 }
 
 
 var int32x4x4 = new ArrayType(int32x4, 4)
 //-->
-{ [Function: Int32x4x4Array]
-  isInstance: [Function: isInstance],
-  elementType: 
-   { [Function: Int32x4Array]
-     isInstance: [Function: isInstance],
-     elementType: { [Function: Int32] bytes: 4 },
-     bytes: 16,
-     count: 4 },
-  bytes: 64,
-  count: 4 }
+{ [Function: Int32x4x4]
+  elementType: { [Function: Int32x4] elementType: [Int32: 4b], bytes: 16 },
+  bytes: 64 }
 
 
 var int32x4x4x2 = new ArrayType(int32x4x4, 2)
 //-->
-{ [Function: Int32x4x4x2Array]
-  isInstance: [Function: isInstance],
+{ [Function: Int32x4x4x2]
   elementType: 
-   { [Function: Int32x4x4Array]
-     isInstance: [Function: isInstance],
-     elementType: 
-      { [Function: Int32x4Array]
-        isInstance: [Function: isInstance],
-        elementType: [Object],
-        bytes: 16,
-        count: 4 },
-     bytes: 64,
-     count: 4 },
-  bytes: 128,
-  count: 2 }
+   { [Function: Int32x4x4]
+     elementType: { [Function: Int32x4] elementType: [Int32: 4b], bytes: 16 },
+     bytes: 64 },
+  bytes: 128 }
 
 
 new int32x4
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ]
+ [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ]
 
 new int32x4x4
 //-->
-[ [Array: Int32x4x4Array]
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ]
+[ <Int32x4x4>
+  [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+  [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+  [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+  [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ]
 
 
 new int32x4x4x2
 //-->
-[ [Array: Int32x4x4x2Array]
- [ [Array: Int32x4x4Array]
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ],
- [ [Array: Int32x4x4Array]
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
- [ [Array: Int32x4Array] <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ] ]
+[ <Int32x4x4x2>
+  [ <Int32x4x4>
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ],
+  [ <Int32x4x4>
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ],
+    [ <Int32x4> <Int32 0>, <Int32 0>, <Int32 0>, <Int32 0> ] ] ]
 ```
 
 ### StructType
 
 #### Simple
 ```
-var RGB = new StructType('RGB', { red: UInt8, green: UInt8, blue: UInt8 })
+var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
 //-->
-{ [Function: RGB]
-  isInstance: [Function: isInstance],
-  fields: 
-   { red: { [Function: UInt8] bytes: 1 },
-     green: { [Function: UInt8] bytes: 1 },
-     blue: { [Function: UInt8] bytes: 1 } },
-  offsets: { red: 0, green: 1, blue: 2 },
-  names: [ 'red', 'green', 'blue' ],
-  bytes: 3 }
+{ [RGB: 3b] r: [UInt8: 1b], g: [UInt8: 1b], b: [UInt8: 1b] }
 
 
-var fuschia = new RGB({ red: 255, green: 0, blue: 255 })
+var fuschia = new RGB({ r: 255, g: 0, b: 255 })
 //-->
-{ [Struct: RGB] red: <UInt8 255>, green: <UInt8 0>, blue: <UInt8 255> }
+{ <RGB> r: <UInt8 255>, g: <UInt8 0>, b: <UInt8 255> }
 
 
-var deepSkyBlue = new RGB({ red: 0, green: 150, blue: 255 })
+var deepSkyBlue = new RGB({ r: 0, g: 150, b: 255 })
 //-->
-{ [Struct: RGB] red: <UInt8 0>, green: <UInt8 150>, blue: <UInt8 255> }
+{ <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> }
+```
+
+#### Nested
+```
+var Border = new StructType('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })
+//-->
+{ [Border: 12b]
+  top: { [RGB: 3b] r: [UInt8: 1b], g: [UInt8: 1b], b: [UInt8: 1b] },
+  right: { [RGB: 3b] r: [UInt8: 1b], g: [UInt8: 1b], b: [UInt8: 1b] },
+  bottom: { [RGB: 3b] r: [UInt8: 1b], g: [UInt8: 1b], b: [UInt8: 1b] },
+  left: { [RGB: 3b] r: [UInt8: 1b], g: [UInt8: 1b], b: [UInt8: 1b] } }
+
+
+new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlue })
+//-->
+{ <Border>
+  top: { <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> },
+  right: { <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> },
+  bottom: { <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> },
+  left: { <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> } }
 ```
