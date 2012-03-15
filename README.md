@@ -77,6 +77,7 @@ __Todo functionality__
 ## Debug Dump Showing Usage
 
 
+
 ### NumericType
 
 #### Instances
@@ -213,26 +214,32 @@ new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlu
 
 #### Indexed
 ```
-var bits = new Bitfield(2)
- { [Bitfield: 16bits] 0000000000000000 }
+var bitfieldType = new BitfieldType(2)
+ [Function]
+
+var bits = new bitfieldType
+ { [Bitfield: 4bits] 0000 }
 
 bits.write(0); bits
- { [Bitfield: 16bits] 0000000000000000 }
+ { [Bitfield: 4bits] 0000 }
 
 bits[12] = true; bits[1] = true; bits;
- { [Bitfield: 16bits] 0100000000001000 }
+ { [Bitfield: 4bits] 0100 }
 
 bits.read()
  4098
 
 bits.reify()
-//-->
-[ false, true, false, false, false, false, false, false, false, false, false, false, true, false, false, false ]
+ [ false, true, false, false ]
 ```
 
 #### Flags
 ```
-var desc = new Bitfield(['PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY','WRITABLE','FROZEN','HIDDEN','NORMAL'])
+var Desc = new BitfieldType('DescriptorFlags', ['PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY','WRITABLE','FROZEN','HIDDEN','NORMAL'])
+//-->
+[Function: DescriptorFlags]
+
+inst = new Desc 
 //-->
 { [Bitfield: 8bits] 
   PRIVATE: false,
@@ -244,27 +251,25 @@ var desc = new Bitfield(['PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY','WRITA
   HIDDEN: false,
   NORMAL: false }
 
-
-desc.FROZEN = true; desc
+inst.ENUMERABLE = true; inst
 //-->
 { [Bitfield: 8bits] 
   PRIVATE: false,
-  ENUMERABLE: false,
+  ENUMERABLE: true,
   CONFIGURABLE: false,
   READONLY: false,
   WRITABLE: false,
-  FROZEN: true,
+  FROZEN: false,
   HIDDEN: false,
   NORMAL: false }
 
+inst.buffer
+ <Buffer 02>
 
-desc.buffer
- <Buffer 20 00 00 00>
+inst.read()
+ 2
 
-desc.read()
- 32
-
-desc.write(1 << 2 | 1 << 4)
+inst.write(1 << 2 | 1 << 4)
 //-->
 { [Bitfield: 8bits] 
   PRIVATE: false,
@@ -276,7 +281,7 @@ desc.write(1 << 2 | 1 << 4)
   HIDDEN: false,
   NORMAL: false }
 
-
-desc.read()
+inst.read()
  20
+
 ```
