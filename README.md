@@ -76,6 +76,7 @@ __Todo functionality__
 
 ## Debug Dump Showing Usage
 
+
 ### NumericType
 
 #### Instances
@@ -206,4 +207,76 @@ new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlu
   right: { <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> },
   bottom: { <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> },
   left: { <RGB> r: <UInt8 0>, g: <UInt8 150>, b: <UInt8 255> } }
+```
+
+### Bitfield
+
+#### Indexed
+```
+var bits = new Bitfield(2)
+ { [Bitfield: 16bits] 0000000000000000 }
+
+bits.write(0); bits
+ { [Bitfield: 16bits] 0000000000000000 }
+
+bits[12] = true; bits[1] = true; bits;
+ { [Bitfield: 16bits] 0100000000001000 }
+
+bits.read()
+ 4098
+
+bits.reify()
+//-->
+[ false, true, false, false, false, false, false, false, false, false, false, false, true, false, false, false ]
+```
+
+#### Flags
+```
+var desc = new Bitfield(['PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY','WRITABLE','FROZEN','HIDDEN','NORMAL'])
+//-->
+{ [Bitfield: 8bits] 
+  PRIVATE: false,
+  ENUMERABLE: false,
+  CONFIGURABLE: false,
+  READONLY: false,
+  WRITABLE: false,
+  FROZEN: false,
+  HIDDEN: false,
+  NORMAL: false }
+
+
+desc.FROZEN = true; desc
+//-->
+{ [Bitfield: 8bits] 
+  PRIVATE: false,
+  ENUMERABLE: false,
+  CONFIGURABLE: false,
+  READONLY: false,
+  WRITABLE: false,
+  FROZEN: true,
+  HIDDEN: false,
+  NORMAL: false }
+
+
+desc.buffer
+ <Buffer 20 00 00 00>
+
+desc.read()
+ 32
+
+desc.write(1 << 2 | 1 << 4)
+//-->
+{ [Bitfield: 8bits] 
+  PRIVATE: false,
+  ENUMERABLE: false,
+  CONFIGURABLE: true,
+  READONLY: false,
+  WRITABLE: true,
+  FROZEN: false,
+  HIDDEN: false,
+  NORMAL: false }
+
+
+desc.read()
+ 20
 ```
