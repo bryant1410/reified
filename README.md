@@ -83,30 +83,28 @@ __Todo functionality__
 #### Instances
 ```
 var int32 = new UInt32(10000000)
- uint32<10000000>
+ <UInt32> 10000000
 
 var int16 = new UInt16(int32)
- uint16<38528>
+ <UInt16> 38528
 
 var int8 = new UInt8(int16)
- uint8<128>
-
+ <UInt8> 128
 ```
 
 #### Shared Data
 ```
 int8.write(100)
- uint8<100>
+ <UInt8> 100
 
 int32
- uint32<9999972>
+ <UInt32> 9999972
 
 int16
- uint16<38500>
+ <UInt16> 38500
 
 int8
- uint8<100>
-
+ <UInt8> 100
 ```
 
 ### ArrayType
@@ -114,51 +112,52 @@ int8
 #### Simple
 ```
 var RGBarray = new ArrayType('RGB', UInt8, 3)
- ‹RGB›[3 ‹UInt8›]
+ ‹RGB›(3b)[ 3 ‹UInt8› ]
 
 new RGBarray([0, 150, 255])
- [ <RGB> uint8<0>, uint8<150>, uint8<255> ]
-
+ <RGB> [ <UInt8> 0, <UInt8> 150, <UInt8> 255 ]
 ```
 
 #### Multidimension
 ```
 var int32x4 = new ArrayType(Int32, 4)
- ‹Int32x4›[4 ‹Int32›]
+ ‹Int32x4›(16b)[ 4 ‹Int32› ]
 
 var int32x4x4 = new ArrayType(int32x4, 4)
- ‹Int32x4x4›[4 ‹Int32x4›[4 ‹Int32›]]
+//-->
+‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ]
+
 
 var int32x4x4x2 = new ArrayType(int32x4x4, 2)
 //-->
-‹Int32x4x4x2›[2 ‹Int32x4x4›[4 ‹Int32x4›[4 ‹Int32›]]]
+‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
 
 
 new int32x4
- [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ]
+ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ]
 
 new int32x4x4
 //-->
-[ <Int32x4x4>
-  [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-  [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-  [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-  [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ] ]
+<Int32x4x4>
+[ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+  <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+  <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+  <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ]
 
 
 new int32x4x4x2
 //-->
-[ <Int32x4x4x2>
-  [ <Int32x4x4>
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ] ],
-  [ <Int32x4x4>
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ],
-    [ <Int32x4> int32<0>, int32<0>, int32<0>, int32<0> ] ] ]
+<Int32x4x4x2>
+[ <Int32x4x4>
+  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ],
+  <Int32x4x4>
+  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
 ```
 
 ### StructType
@@ -167,37 +166,37 @@ new int32x4x4x2
 ```
 var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
 //-->
-‹RGB› [ r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› ]
+‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
 
 
 var fuschia = new RGB({ r: 255, g: 0, b: 255 })
 //-->
-{ <RGB> r: uint8<255>, g: uint8<0>, b: uint8<255> }
+<RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
 
 
 var deepSkyBlue = new RGB({ r: 0, g: 150, b: 255 })
 //-->
-{ <RGB> r: uint8<0>, g: uint8<150>, b: uint8<255> }
+<RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
 ```
 
 #### Nested
 ```
 var Border = new StructType('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })
 //-->
-‹Border›
-| top:    ‹RGB› [ r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› ]
-| right:  ‹RGB› [ r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› ]
-| bottom: ‹RGB› [ r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› ]
-| left:   ‹RGB› [ r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› ]
+‹Border›(12b)
+| top:    ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
+| right:  ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
+| bottom: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
+| left:   ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
 
 
 new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlue })
 //-->
-{ <Border>
-  top: { <RGB> r: uint8<0>, g: uint8<150>, b: uint8<255> },
-  right: { <RGB> r: uint8<0>, g: uint8<150>, b: uint8<255> },
-  bottom: { <RGB> r: uint8<0>, g: uint8<150>, b: uint8<255> },
-  left: { <RGB> r: uint8<0>, g: uint8<150>, b: uint8<255> } }
+<Border>
+| top:    <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
+| right:  <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
+| bottom: <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
+| left:   <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
 ```
 
 ### Bitfield
@@ -205,10 +204,10 @@ new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlu
 #### Indexed
 ```
 var bitfield = new BitfieldType(2)
- ‹Bitfield› (32bit)
+ ‹Bitfield›(32bit)
 
 var bits = new bitfield
- ‹Bitfield›[10100001000100000000000000000000]
+ ‹Bitfield›[00000000000000000000000000000000]
 
 bits.write(0); bits
  ‹Bitfield›[00000000000000000000000000000000]
@@ -223,16 +222,45 @@ bits.read()
 
 bits.reify()
 //-->
-[ false, true, false, false, false, false, false, false, false, false, false,
-  false, true, false, false, false, false, false, false, false, false, false,
-  false, false, false, false, false, false, false, false, false, false ]
+[ false,
+  true,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  true,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false,
+  false ]
 ```
 
 #### Flags
 ```
 var Desc = new BitfieldType('DescriptorFlags', ['PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY','WRITABLE','FROZEN','HIDDEN','NORMAL'])
 //-->
-‹DescriptorFlags› (8bit)
+‹DescriptorFlags›(8bit)
   0x1   PRIVATE
   0x2   ENUMERABLE
   0x4   CONFIGURABLE
@@ -241,7 +269,6 @@ var Desc = new BitfieldType('DescriptorFlags', ['PRIVATE','ENUMERABLE','CONFIGUR
   0x20  FROZEN
   0x40  HIDDEN
   0x80  NORMAL
-
 
 inst = new Desc 
 //-->
@@ -255,7 +282,6 @@ inst = new Desc
   HIDDEN: false,
   NORMAL: false }
 
-
 inst.ENUMERABLE = true; inst
 //-->
 { ‹DescriptorFlags›
@@ -267,7 +293,6 @@ inst.ENUMERABLE = true; inst
   FROZEN: false,
   HIDDEN: false,
   NORMAL: false }
-
 
 inst.buffer
  <Buffer 02>
@@ -287,36 +312,28 @@ inst.write(1 << 2 | 1 << 4)
   HIDDEN: false,
   NORMAL: false }
 
-
 inst.read()
  20
 ```
 
 ### Cominations
 
-
 #### .lnk File Format
 ```
-var CLSID = new ArrayType('CLSID', UInt8, 16)
+var CLSID = new ArrayType('CLSID', UInt8, 16);
 
-var LinkFlags = new BitfieldType('LinkFlags', [
-  'HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath', 'HasWorkingDir','HasArguments',
-  'HasIconLocation','IsUnicode', 'ForceNoLinkInfo','HasExpString','RunInSeparateProcess', 'UNUSED1',
-  'HasDarwinID','RunAsUser','HasExpIcon','NoPidAlias','UNUSED2', 'RunWithShimLayer','ForceNoLinkTrack',
+var LinkFlags = new BitfieldType('LinkFlags', ['HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath',
+  'HasWorkingDir','HasArguments','HasIconLocation','IsUnicode','ForceNoLinkInfo','HasExpString','RunInSeparateProcess',
+  'UNUSED1','HasDarwinID','RunAsUser','HasExpIcon','NoPidAlias','UNUSED2','RunWithShimLayer','ForceNoLinkTrack',
   'EnableTargetMetadata','DisableLinkPathTracking','DisableKnownFolderTracking','DisableKnownFolderAlias',
   'AllowLinkToLink','UnaliasOnSave','PreferEnvironmentPath','KeepLocalIDListForUNCTarget'
 ]);
 
-var FileAttributesFlags = new BitfieldType('FileAttributesFlags', [
-  'READONLY','HIDDEN','SYSTEM','UNUSED1','DIRECTORY','ARCHIVE',
-  'UNUSED2','NORMAL','TEMPORARY','SPARSE_FILE','REPARSE_POINT',
-  'COMPRESSED','OFFLINE','NOT_CONTENT_INDEXED','ENCRYPTED'
+var FileAttributesFlags = new BitfieldType('FileAttributesFlags', ['READONLY','HIDDEN','SYSTEM','UNUSED1','DIRECTORY','ARCHIVE',
+  'UNUSED2','NORMAL','TEMPORARY','SPARSE_FILE','REPARSE_POINT','COMPRESSED','OFFLINE','NOT_CONTENT_INDEXED','ENCRYPTED'
 ]);
 
-var FILETIME = new StructType('FILETIME ', {
-  LowDateTime: UInt32,
-  HighDateTime: UInt32
-})
+var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 });
 
 var ShellLinkHeader = new StructType('ShellLinkHeader', {
   HeaderSize: UInt32,
@@ -330,59 +347,72 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
   IconIndex: Int32,
   ShowCommand: UInt32
 });
-
 //-->
-‹ShellLinkHeader›
+‹ShellLinkHeader›(62b)
 | HeaderSize:     ‹UInt32›
-| LinkCLSID:      ‹CLSID›[16 ‹UInt8›]
-| LinkFlags:      ‹LinkFlags› (32bit)
-    0x1           HasLinkTargetIDList
-    0x2           HasLinkInfo
-    0x4           HasName
-    0x8           HasRelativePath
-    0x10          HasWorkingDir
-    0x20          HasArguments
-    0x40          HasIconLocation
-    0x80          IsUnicode
-    0x100         ForceNoLinkInfo
-    0x200         HasExpString
-    0x400         RunInSeparateProcess
-    0x800         UNUSED1
-    0x1000        HasDarwinID
-    0x2000        RunAsUser
-    0x4000        HasExpIcon
-    0x8000        NoPidAlias
-    0x10000       UNUSED2
-    0x20000       RunWithShimLayer
-    0x40000       ForceNoLinkTrack
-    0x80000       EnableTargetMetadata
-    0x100000      DisableLinkPathTracking
-    0x200000      DisableKnownFolderTracking
-    0x400000      DisableKnownFolderAlias
-    0x800000      AllowLinkToLink
-    0x1000000     UnaliasOnSave
-    0x2000000     PreferEnvironmentPath
-    0x4000000     KeepLocalIDListForUNCTarget
-| FileAttributes: ‹FileAttributesFlags› (16bit)
-    0x1      READONLY
-    0x2      HIDDEN
-    0x4      SYSTEM
-    0x8      UNUSED1
-    0x10     DIRECTORY
-    0x20     ARCHIVE
-    0x40     UNUSED2
-    0x80     NORMAL
-    0x100    TEMPORARY
-    0x200    SPARSE_FILE
-    0x400    REPARSE_POINT
-    0x800    COMPRESSED
-    0x1000   OFFLINE
-    0x2000   NOT_CONTENT_INDEXED
-    0x4000   ENCRYPTED
-| CreationTime:   ‹FILETIME› [ LowDateTime: ‹UInt32› | HighDateTime: ‹UInt32› ]
-| AccessTime:     ‹FILETIME› [ LowDateTime: ‹UInt32› | HighDateTime: ‹UInt32› ]
-| WriteTime:      ‹FILETIME› [ LowDateTime: ‹UInt32› | HighDateTime: ‹UInt32› ]
+| LinkCLSID:      ‹CLSID›(16b)[ 16 ‹UInt8› ]
+| LinkFlags:      ‹LinkFlags›(32bit)
+  0x1           HasLinkTargetIDList
+  0x2           HasLinkInfo
+  0x4           HasName
+  0x8           HasRelativePath
+  0x10          HasWorkingDir
+  0x20          HasArguments
+  0x40          HasIconLocation
+  0x80          IsUnicode
+  0x100         ForceNoLinkInfo
+  0x200         HasExpString
+  0x400         RunInSeparateProcess
+  0x800         UNUSED1
+  0x1000        HasDarwinID
+  0x2000        RunAsUser
+  0x4000        HasExpIcon
+  0x8000        NoPidAlias
+  0x10000       UNUSED2
+  0x20000       RunWithShimLayer
+  0x40000       ForceNoLinkTrack
+  0x80000       EnableTargetMetadata
+  0x100000      DisableLinkPathTracking
+  0x200000      DisableKnownFolderTracking
+  0x400000      DisableKnownFolderAlias
+  0x800000      AllowLinkToLink
+  0x1000000     UnaliasOnSave
+  0x2000000     PreferEnvironmentPath
+  0x4000000     KeepLocalIDListForUNCTarget
+| FileAttributes: ‹FileAttributesFlags›(16bit)
+  0x1      READONLY
+  0x2      HIDDEN
+  0x4      SYSTEM
+  0x8      UNUSED1
+  0x10     DIRECTORY
+  0x20     ARCHIVE
+  0x40     UNUSED2
+  0x80     NORMAL
+  0x100    TEMPORARY
+  0x200    SPARSE_FILE
+  0x400    REPARSE_POINT
+  0x800    COMPRESSED
+  0x1000   OFFLINE
+  0x2000   NOT_CONTENT_INDEXED
+  0x4000   ENCRYPTED
+| CreationTime:   ‹FILETIME›(8b) { Low: ‹UInt32› | High: ‹UInt32› }
+| AccessTime:     ‹FILETIME›(8b) { Low: ‹UInt32› | High: ‹UInt32› }
+| WriteTime:      ‹FILETIME›(8b) { Low: ‹UInt32› | High: ‹UInt32› }
 | FileSize:       ‹UInt32›
 | IconIndex:      ‹Int32›
 | ShowCommand:    ‹UInt32›
+```
+
+#### Graphics
+```
+var Point = new StructType('Point', { x: UInt32, y: UInt32 });
+var Color = new StructType('Color', { r: UInt8, g: UInt8, b: UInt8 });
+var Pixel = new StructType('Pixel', { point: Point, color: Color });
+
+var Triangle = new ArrayType('Triangle', Pixel, 3);
+//-->
+‹Triangle›(33b)
+[ 3 ‹Pixel›(11b)
+  | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
+  | color: ‹Color›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
 ```
