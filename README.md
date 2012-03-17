@@ -6,7 +6,7 @@ StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow 
 
 * Equally usable for mapping data from files, data streams, and in memory data structures (FFI)
 * Thus ability to apply the constructs provided to different underlying data providers
-* Some level of support for dynamic allocation of memory in cases where your producing structures in memory (as opposed to IO) without C++ support
+* Some level of support for dynamic allocation of memory in cases where your producing structures in memory (as opposed to IO) without C support
 * APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI
 * Across the board ability to handle complex and nested structures.
 * An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
@@ -26,85 +26,95 @@ StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow 
 
 * BitfieldType - A constructor constructor to create bitfields which seamlessly map between bits in to a set of flags and back to memory.
 
-## API work in progress
+## Terminology
 
-#### Constructor/call primary interface
+At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors, like `ArrayType`. `ArrayType.__proto__` and the other share a common genesis, the top level `Type`.
 
-Buffer can be anything that has a buffer property as well, so it'll work with any ArrayBuffer, an instance of a reify Type, or whatever.
-Value can also be a buffer in which case the data will reified to JS then written out (going to add raw buffer copy functions also).
-
-* `[new ]AnyT(buffer, byteOffset, value)` - instance using buffer, at `byteOffset || 0`, optionally initialized with value
-* `[new ]AnyT(value)` - allocates new buffer initialized with value
-`new NumberT(value)` - new required here for NumberT
-* `NumberT(value)` - for numbers, utility to cast a number to a type (doesn't use buffer to convert)
-
-#### Static class functions
-
-* `AnyT.isInstance(o)` - unified name for equivelent to Buffer.isBuffer since there's so many types
-* `AnyT.bytes`         - byteSize of an instance of the Type
-* `StructT.fields`     - frozen structure reference with fieldName --> AnyT that constructs it
-* `StructT.names`      - array of field names
-* `ArrayT.memberType` - points to AnyT that constructs the type it contains
+A _‹Type›_ is the constructor for a given type of _<Data>_, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototype, like `NumericType.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
 
 
-#### Prototype methods //properties
+### ‹Type›
 
-* `AnyT.prototype.write(value) // primarily for setting the value of the whole thing at once depending on type
-* `ArrayT.prototype.write(value, index) //optionally start from given index on the type itself
-* `AnyT.prototype.reify() // recursively convert to javascript objects/values
-* `AnyT.prototype.fill(value) // fills each distinct area of the type with value. (array indices, struct members, same as write for number)
-* `AnyT.prototype.bytes // same as AnyT.bytes
-* `AnyT.prototype.dataType // number type name or 'array' or 'struct'
+__‹Type› as constructor__
 
-__implemented for numbers, will be for Structs and Arrays soon__
+In the following, buffer can be either a buffer itself or something that has a buffer property as well, so it'll work with any ArrayBuffer, or a _<Data>_ instance.
+Value can also be a buffer in which case the data will reified to JS then written out, thus copying the data. `new` is optional except for _‹NumericT›_.
 
-* `AnyT.prototype.rebase(buffer, offset)` - update view to another buffer, offset defaulting to 0
-* `AnyT.prototype.realign(offset)` - change offset of view, keeping buffer
+* `new ‹Type›(buffer, offset, value)` - instance using buffer, at `byteOffset || 0`, optionally initialized with value
+* `new ‹Type›(value)` - allocates new buffer initialized with value
+* `new ‹NumericT›(value)` - new is required for ‹NumericT› to construct
+* `‹NumericT›(value)` - utility to cast a number to a type (doesn't use buffer to convert)
 
-__for both of the following it works the same. accessors that do the following__
+__‹Type› static functions and properties__
 
-* `[get]` - returns the type instance, not the reifyied value. To get the value you can do instance[indexOrField].reify()
-* `[set]` - sets the underlying buffer to the value, framed through whatever structure is between you and the memory
-* `ArrayT.prototype[0...length]` - index based accessor
-* `StructT.prototype.fieldName` - field based accessors
+* `‹Type›.isInstance(o)` - unified name for equivelent to Buffer.isBuffer since there's so many types
+* `‹Type›.bytes`         - byteSize of an instance of the Type
+* `‹StructT›.fields`     - frozen structure reference with fieldName --> Data that constructs it
+* `‹StructT›.names`      - array of field names
+* `‹StructT›.offsets`    - bytes offsets for each member
+* `‹ArrayT›.memberType`  - points to Data that constructs the type it contains
+* `‹ArrayT›.count`       - length for instances of _<Array>_.
+* `‹BitfieldT›.flags`    - array containing flag names
+
+
+#### <Data> methods and properties
+
+_<Data>_ instances are constructed by `new ‹Type›`. It represents the interface that manages interacts with memory.
+
+* `<Data>.bytes` - same as ‹Type›.bytes
+* `<Data>.DataType` - number type name or 'array' or 'struct' or 'bitfield'
+* `<Data>.write(value)` - primarily for setting the value of the whole thing at once depending on type
+* `<Data>.reify()` - recursively convert to JavaScript objects/values
+* `<Data>.fill(value)` - fills each distinct area of the type with value. (array indices, struct members, same as write for number)
+* `<Data>.rebase(buffer)` - update view to another buffer
+* `<Data>.realign(offset)` - change offset of view, keeping same buffer
+* `<Data> accessor [get]` - returns the <Data> instance for that field, not the reified value. To get the value you can do instance[indexOrField].reify()
+* `<Data> accessor [set]` - sets the value, framed through whatever _‹Type›_ structure in place
+
+* `<Struct>.fieldName` - field based accessors
+
+* `<Array>.write(value, index)` - optionally start from given index on the type itself
+* `<Array>[0...length]` - index based accessor
+* `<Array>.map` - Array.prototype.map
+* `<Array>.forEach` - Array.prototype.forEach
+* `<Array>.reduce` - Array.prototype.reduce
+
+* `<Bitfield>.write(value)` - writes the underlying data as a single number
+* `<Bitfield>.read()` - reads the underlying data as a single number
+* `<Bitfield>.get(index)` - get bit at index
+* `<Bitfield>.set(index)` - set bit at index to 1
+* `<Bitfield>.unset(index)` - set bit at index to 0
+* `<Bitfield>[0...length]` - index based accessor
+* `<Bitfield>.flagName` - flag based accessor
+* `<Bitfield>.map` - Array.prototype.map
+* `<Bitfield>.forEach` - Array.prototype.forEach
+* `<Bitfield>.reduce` - Array.prototype.reduce
+
 
 __Todo functionality__
 
-* AnyT.prototype.copy(bufferItem, startSource, startDest, length) // direct copying at buffer level to buffer or item.buffer
-* AnyT.prototype.clone(bufferItem, offset) //copy in entirety to target buffer or item.buffer, initializing a new instance of the type over the * memory
+* `<Data>.copy(buffer, startSource, startDest, length)` - direct copying at buffer level to buffer or item.buffer
+* `<Data>.clone(buffer, offset)` - copy in entirety to target buffer or item.buffer, initializing a new instance of the type over the * memory
 
 
-## Debug Dump Showing Usage
-
+## Example Usage
 
 
 ### NumericType
 
 #### Instances
 ```
-var int32 = new UInt32(10000000)
- <UInt32> 10000000
-
-var int16 = new UInt16(int32)
- <UInt16> 38528
-
-var int8 = new UInt8(int16)
- <UInt8> 128
+var int32 = new UInt32(10000000) <UInt32> 10000000
+var int16 = new UInt16(int32)    <UInt16> 38528
+var int8 = new UInt8(int16)      <UInt8>  128
 ```
 
 #### Shared Data
 ```
 int8.write(100)
- <UInt8> 100
-
-int32
- <UInt32> 9999972
-
-int16
- <UInt16> 38500
-
-int8
- <UInt8> 100
+int32 <UInt32> 9999972
+int16 <UInt16> 38500
+int8  <UInt8>  100
 ```
 
 ### ArrayType
@@ -216,49 +226,22 @@ bits[12] = true; bits[1] = true; bits;
 //-->
 ‹Bitfield›[01000000000010000000000000000000]
 
-
 bits.read()
  4098
 
 bits.reify()
 //-->
-[ false,
-  true,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  true,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false,
-  false ]
+[ false, true, false, false, false, false, false, false, false, false, false,
+  false, true, false, false, false, false, false, false, false, false, false,
+  false, false, false, false, false, false, false, false, false, false ]
 ```
 
 #### Flags
 ```
-var Desc = new BitfieldType('DescriptorFlags', ['PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY','WRITABLE','FROZEN','HIDDEN','NORMAL'])
+var DescriptorFlags = new BitfieldType('DescriptorFlags', [
+  'PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY',
+  'WRITABLE','FROZEN','HIDDEN','NORMAL'
+])
 //-->
 ‹DescriptorFlags›(8bit)
   0x1   PRIVATE
@@ -270,7 +253,9 @@ var Desc = new BitfieldType('DescriptorFlags', ['PRIVATE','ENUMERABLE','CONFIGUR
   0x40  HIDDEN
   0x80  NORMAL
 
-inst = new Desc 
+
+var desc = new DescriptorFlags
+desc.ENUMERABLE = true;
 //-->
 { ‹DescriptorFlags›
   PRIVATE: false,
@@ -282,25 +267,13 @@ inst = new Desc
   HIDDEN: false,
   NORMAL: false }
 
-inst.ENUMERABLE = true; inst
-//-->
-{ ‹DescriptorFlags›
-  PRIVATE: false,
-  ENUMERABLE: true,
-  CONFIGURABLE: false,
-  READONLY: false,
-  WRITABLE: false,
-  FROZEN: false,
-  HIDDEN: false,
-  NORMAL: false }
-
-inst.buffer
+desc.buffer
  <Buffer 02>
 
-inst.read()
+desc.read()
  2
 
-inst.write(1 << 2 | 1 << 4)
+desc.write(1 << 2 | 1 << 4)
 //-->
 { ‹DescriptorFlags›
   PRIVATE: false,
@@ -312,7 +285,8 @@ inst.write(1 << 2 | 1 << 4)
   HIDDEN: false,
   NORMAL: false }
 
-inst.read()
+
+desc.read()
  20
 ```
 
@@ -320,21 +294,17 @@ inst.read()
 
 #### .lnk File Format
 ```
-var CLSID = new ArrayType('CLSID', UInt8, 16);
-
+var CLSID = new ArrayType('CLSID', UInt8, 16)
+var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 })
 var LinkFlags = new BitfieldType('LinkFlags', ['HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath',
   'HasWorkingDir','HasArguments','HasIconLocation','IsUnicode','ForceNoLinkInfo','HasExpString','RunInSeparateProcess',
   'UNUSED1','HasDarwinID','RunAsUser','HasExpIcon','NoPidAlias','UNUSED2','RunWithShimLayer','ForceNoLinkTrack',
   'EnableTargetMetadata','DisableLinkPathTracking','DisableKnownFolderTracking','DisableKnownFolderAlias',
   'AllowLinkToLink','UnaliasOnSave','PreferEnvironmentPath','KeepLocalIDListForUNCTarget'
 ]);
-
 var FileAttributesFlags = new BitfieldType('FileAttributesFlags', ['READONLY','HIDDEN','SYSTEM','UNUSED1','DIRECTORY','ARCHIVE',
   'UNUSED2','NORMAL','TEMPORARY','SPARSE_FILE','REPARSE_POINT','COMPRESSED','OFFLINE','NOT_CONTENT_INDEXED','ENCRYPTED'
-]);
-
-var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 });
-
+])
 var ShellLinkHeader = new StructType('ShellLinkHeader', {
   HeaderSize: UInt32,
   LinkCLSID:  CLSID,
@@ -408,7 +378,6 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
 var Point = new StructType('Point', { x: UInt32, y: UInt32 });
 var Color = new StructType('Color', { r: UInt8, g: UInt8, b: UInt8 });
 var Pixel = new StructType('Pixel', { point: Point, color: Color });
-
 var Triangle = new ArrayType('Triangle', Pixel, 3);
 //-->
 ‹Triangle›(33b)
@@ -416,3 +385,4 @@ var Triangle = new ArrayType('Triangle', Pixel, 3);
   | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
   | color: ‹Color›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
 ```
+
