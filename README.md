@@ -461,6 +461,42 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
 | ShowCommand:    ‹UInt32›
 ```
 
+### Triangle
+
+```javascript
+var Point = new StructType('Point', { x: UInt32, y: UInt32 });
+var Color = new StructType('Color', { r: UInt8, g: UInt8, b: UInt8 });
+var Pixel = new StructType('Pixel', { point: Point, color: Color });
+var Triangle = new ArrayType('Triangle', Pixel, 3);
+//-->
+‹Triangle›(33b)
+[ 3 ‹Pixel›(11b)
+  | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
+  | color: ‹Color›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
+
+
+var white = new Color({ r: 255, g: 255, b: 255 });
+var red = new Point({ r: 255, g: 0, b: 0 });
+var origin = new Point({ x: 0, y: 0 });
+var defaults = new Pixel({ point: origin, color: white });
+
+new Triangle([
+  defaults,
+  { point: { x:  5, y: 5 }, color: red },
+  { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } }
+])
+//-->
+<Triangle>
+[ <Pixel>
+  | point: <Point> { x: <UInt32> 0 | y: <UInt32> 0 }
+  | color: <Color> { r: <UInt8> 255 | g: <UInt8> 255 | b: <UInt8> 255 },
+  <Pixel>
+  | point: <Point> { x: <UInt32> 5 | y: <UInt32> 5 }
+  | color: <Color> { r: <UInt8> 0 | g: <UInt8> 0 | b: <UInt8> 0 },
+  <Pixel>
+  | point: <Point> { x: <UInt32> 10 | y: <UInt32> 0 }
+  | color: <Color> { r: <UInt8> 0 | g: <UInt8> 0 | b: <UInt8> 128 } ]
+```
 
 ## TODO
 
