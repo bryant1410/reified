@@ -2,15 +2,87 @@
 
 StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow easy conversion to and from binary data.
 
-## Goals
+```
+var Point = new StructType('Point', { x: UInt32, y: UInt32 });
+var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
+var Pixel = new StructType('Pixel', { point: Point, color: RGB })
 
-* Equally usable for mapping data from files, data streams, and in memory data structures (FFI)
-* Thus ability to apply the constructs provided to different underlying data providers
-* Some level of support for dynamic allocation of memory in cases where your producing structures in memory (as opposed to IO) without C support
-* APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI
-* Across the board ability to handle complex and nested structures.
-* An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
-* Dynamic mapping of structures (useful for mapping out files like TTF font file format for example with header tables and pointer rich structures) is something I want to do is harder and lower priority.
+var Triangle = new ArrayType('Triangle', Pixel, 3)
+//-->
+‹Triangle›(33b)
+[ 3 ‹Pixel›(11b)
+  | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
+  | color: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
+
+var Border = new StructType('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })
+//-->
+‹Border›(12b)
+| top:    ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
+| right:  ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
+| bottom: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
+| left:   ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
+
+var fuschia = new RGB({ r: 255, g: 0, b: 255 })
+var deepSkyBlue = new RGB({ r: 0, g: 150, b: 255 })
+new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlue })
+//-->
+<Border>
+| top:    <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
+| right:  <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
+| bottom: <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
+| left:   <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
+
+
+var int32x4 = new ArrayType(Int32, 4)
+var int32x4x4 = new ArrayType(int32x4, 4)
+var int32x4x4x2 = new ArrayType(int32x4x4, 2)
+//-->
+‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
+
+new int32x4x4x2
+//-->
+<Int32x4x4x2>
+[ <Int32x4x4>
+  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ],
+  <Int32x4x4>
+  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
+
+
+var DescriptorFlags = new BitfieldType('DescriptorFlags', [
+  'PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY',
+  'WRITABLE','FROZEN','HIDDEN','NORMAL'
+])
+//-->
+‹DescriptorFlags›(8bit)
+  0x1   PRIVATE
+  0x2   ENUMERABLE
+  0x4   CONFIGURABLE
+  0x8   READONLY
+  0x10  WRITABLE
+  0x20  FROZEN
+  0x40  HIDDEN
+  0x80  NORMAL
+
+var desc = new DescriptorFlags
+desc.ENUMERABLE = true;
+//-->
+{ ‹DescriptorFlags›
+  PRIVATE: false,
+  ENUMERABLE: false,
+  CONFIGURABLE: false,
+  READONLY: false,
+  WRITABLE: false,
+  FROZEN: false,
+  HIDDEN: false,
+  NORMAL: false }
+```
+
 
 ## Top level types
 
@@ -381,16 +453,9 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
 | ShowCommand:    ‹UInt32›
 ```
 
-#### Graphics
-```
-var Point = new StructType('Point', { x: UInt32, y: UInt32 });
-var Color = new StructType('Color', { r: UInt8, g: UInt8, b: UInt8 });
-var Pixel = new StructType('Pixel', { point: Point, color: Color });
-var Triangle = new ArrayType('Triangle', Pixel, 3);
-//-->
-‹Triangle›(33b)
-[ 3 ‹Pixel›(11b)
-  | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
-  | color: ‹Color›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
-```
 
+## TODO
+
+* APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI
+* An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
+* Dynamic mapping of structures (useful for mapping out files like TTF font file format for example with header tables and pointer rich structures).
