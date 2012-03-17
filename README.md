@@ -2,7 +2,7 @@
 
 StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow easy conversion to and from binary data.
 
-```
+```javascript
 var Point = new StructType('Point', { x: UInt32, y: UInt32 });
 var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
 var Pixel = new StructType('Pixel', { point: Point, color: RGB })
@@ -74,13 +74,21 @@ desc.ENUMERABLE = true;
 //-->
 { ‹DescriptorFlags›
   PRIVATE: false,
-  ENUMERABLE: false,
+  ENUMERABLE: true,
   CONFIGURABLE: false,
   READONLY: false,
   WRITABLE: false,
   FROZEN: false,
   HIDDEN: false,
   NORMAL: false }
+
+‹DescriptorFlags›[01000000]
+
+desc.buffer
+ <Buffer 02>
+
+desc.read()
+ 2
 ```
 
 
@@ -183,14 +191,14 @@ __Todo functionality__
 ### NumericType
 
 #### Instances
-```
+```javascript
 var int32 = new UInt32(10000000) <UInt32> 10000000
 var int16 = new UInt16(int32)    <UInt16> 38528
 var int8 = new UInt8(int16)      <UInt8>  128
 ```
 
 #### Shared Data
-```
+```javascript
 int8.write(100)
 int32 <UInt32> 9999972
 int16 <UInt16> 38500
@@ -200,7 +208,7 @@ int8  <UInt8>  100
 ### ArrayType
 
 #### Simple
-```
+```javascript
 var RGBarray = new ArrayType('RGB', UInt8, 3)
  ‹RGB›(3b)[ 3 ‹UInt8› ]
 
@@ -209,7 +217,7 @@ new RGBarray([0, 150, 255])
 ```
 
 #### Multidimension
-```
+```javascript
 var int32x4 = new ArrayType(Int32, 4)
  ‹Int32x4›(16b)[ 4 ‹Int32› ]
 
@@ -253,7 +261,7 @@ new int32x4x4x2
 ### StructType
 
 #### Simple
-```
+```javascript
 var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
 //-->
 ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
@@ -270,7 +278,7 @@ var deepSkyBlue = new RGB({ r: 0, g: 150, b: 255 })
 ```
 
 #### Nested
-```
+```javascript
 var Border = new StructType('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })
 //-->
 ‹Border›(12b)
@@ -292,7 +300,7 @@ new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlu
 ### Bitfield
 
 #### Indexed
-```
+```javascript
 var bitfield = new BitfieldType(2)
  ‹Bitfield›(32bit)
 
@@ -317,7 +325,7 @@ bits.reify()
 ```
 
 #### Flags
-```
+```javascript
 var DescriptorFlags = new BitfieldType('DescriptorFlags', [
   'PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY',
   'WRITABLE','FROZEN','HIDDEN','NORMAL'
@@ -373,7 +381,7 @@ desc.read()
 ### Cominations
 
 #### .lnk File Format
-```
+```javascript
 var CLSID = new ArrayType('CLSID', UInt8, 16)
 var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 })
 var LinkFlags = new BitfieldType('LinkFlags', ['HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath',
