@@ -70,7 +70,7 @@ var DescriptorFlags = new BitfieldType('DescriptorFlags', [
   0x80  NORMAL
 
 var desc = new DescriptorFlags
-desc.ENUMERABLE = true;
+desc.ENUMERABLE = true
 //-->
 { ‹DescriptorFlags›
   PRIVATE: false,
@@ -108,7 +108,7 @@ desc.read()
 
 ## Terminology
 
-At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors, like `ArrayType`. `ArrayType.__proto__` and the other share a common genesis, the top level `Type`.
+At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors, like `ArrayType`. `ArrayType.__proto__` and the others share a common genesis, the top level `Type`.
 
 A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototype, like `NumericType.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
 
@@ -127,12 +127,12 @@ Value can also be a buffer in which case the data will reified to JS then writte
 
 __‹Type› static functions and properties__
 
-* `‹Type›.isInstance(o)` - unified name for equivelent to Buffer.isBuffer since there's so many types
+* `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the ‹Type›. There's also a version of this on each top level Type, `ArrayType.isInstance(o)`
 * `‹Type›.bytes`         - byteSize of an instance of the Type
 * `‹StructT›.fields`     - frozen structure reference with fieldName --> Data that constructs it
 * `‹StructT›.names`      - array of field names
 * `‹StructT›.offsets`    - bytes offsets for each member
-* `‹ArrayT›.memberType`  - points to Data that constructs the type it contains
+* `‹ArrayT›.memberType`  - the _‹Type›_ the array is made of
 * `‹ArrayT›.count`       - length for instances of `<Array>`.
 * `‹BitfieldT›.flags`    - array containing flag names
 
