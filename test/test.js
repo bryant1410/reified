@@ -1,13 +1,13 @@
-var inspect = require('./utility').inspect;
-require('./utility').MAKE_ALL_ENUMERABLE();
+var inspect = require('../lib/utility').inspect;
+require('../lib/utility').MAKE_ALL_ENUMERABLE();
 
 //delete Buffer.prototype.inspect;
 
-
-var Numerics = require('./numeric');
-var ArrayType = require('./array');
-var StructType = require('./struct');
-var BitfieldType = require('./bitfield');
+var reify = require('../')
+var Numerics = reify.Numeric;
+var ArrayType = reify.Array;
+var StructType = reify.Struct;
+var BitfieldType = reify.Bitfield;
 
 // local scope ahoy
 for (var k in Numerics) eval('var '+k+' = Numerics.'+k);
@@ -84,7 +84,7 @@ section("Bitfield", [
                  "bits.read()",
                  "bits.reify()" ] ],
   [ "Flags",   [ "var Desc = new BitfieldType('DescriptorFlags', "+
-                 "['PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY','WRITABLE','FROZEN','HIDDEN','NORMAL'])",
+                 "['ENUMERABLE','CONFIGURABLE','WRITABLE'])",
                  "inst = new Desc ",
                  "inst.ENUMERABLE = true; inst",
                  "inst.buffer",
@@ -94,7 +94,7 @@ section("Bitfield", [
 ]);
 
 section("Cominations", [
-  [ ".lnk File Format", [ "var CLSID = new ArrayType('CLSID', UInt8, 16)",
+  [ ".lnk File Format", [ "var CLSID = new ArrayType('CLSID', 'UInt8', 16)",
                           "var LinkFlags = new BitfieldType('LinkFlags', ['HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath',\n"+
                           "  'HasWorkingDir','HasArguments','HasIconLocation','IsUnicode','ForceNoLinkInfo','HasExpString','RunInSeparateProcess',\n"+
                           "  'UNUSED1','HasDarwinID','RunAsUser','HasExpIcon','NoPidAlias','UNUSED2','RunWithShimLayer','ForceNoLinkTrack',\n"+
@@ -102,19 +102,20 @@ section("Cominations", [
                           "  'AllowLinkToLink','UnaliasOnSave','PreferEnvironmentPath','KeepLocalIDListForUNCTarget'\n]);",
                           "var FileAttributesFlags = new BitfieldType('FileAttributesFlags', ['READONLY','HIDDEN','SYSTEM','UNUSED1','DIRECTORY','ARCHIVE',\n"+
                           "  'UNUSED2','NORMAL','TEMPORARY','SPARSE_FILE','REPARSE_POINT','COMPRESSED','OFFLINE','NOT_CONTENT_INDEXED','ENCRYPTED'\n])",
-                          "var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 })",
+                          "var FILETIME = new StructType('FILETIME', { Low: UInt32, High: UInt32 })",
                           ["var ShellLinkHeader = new StructType('ShellLinkHeader', {",
                           "  HeaderSize: UInt32,",
                           "  LinkCLSID:  CLSID,",
                           "  LinkFlags:  LinkFlags,",
                           "  FileAttributes: FileAttributesFlags,",
                           "  CreationTime:  FILETIME,",
-                          "  AccessTime:  FILETIME,",
+                          "  AccessTime:  'FILETIME',",
                           "  WriteTime:  FILETIME,",
                           "  FileSize: UInt32,",
                           "  IconIndex: Int32,",
                           "  ShowCommand: UInt32",
-                          "});"].join('\n') ]],
+                          "});"].join('\n'),
+                          "new ShellLinkHeader"]],
   [ "Graphics",   [ "var Point = new StructType('Point', { x: UInt32, y: UInt32 });",
                     "var Color = new StructType('Color', { r: UInt8, g: UInt8, b: UInt8 });",
                     "var Pixel = new StructType('Pixel', { point: Point, color: Color });",
@@ -130,15 +131,4 @@ section("Cominations", [
                     "])"].join('\n')
                     ]]
 ]);
-
-
-
-
-
-
-
-
-
-
-
 

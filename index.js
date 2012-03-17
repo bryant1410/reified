@@ -1,6 +1,6 @@
 module.exports = {
-  Numeric:      require('./lib/numeric'),
-  StructType:   require('./lib/struct'),
-  ArrayType:    require('./lib/array'),
-  BitfieldType: require('./lib/bitfield'),
+  Numeric:  require('./lib/numeric'),
+  Struct:   require('./lib/struct'),
+  Array:    require('./lib/array'),
+  Bitfield: require('./lib/bitfield'),
 };
