@@ -129,6 +129,7 @@ __‹Type› static functions and properties__
 
 * `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the ‹Type›. There's also a version of this on each top level Type, `ArrayType.isInstance(o)`
 * `‹Type›.bytes`         - byteSize of an instance of the Type
+* `‹Type›.array(n)`      - create a new ‹ArrayT› from ‹Type› with _n_ size
 * `‹StructT›.fields`     - frozen structure reference with fieldName --> Data that constructs it
 * `‹StructT›.names`      - array of field names
 * `‹StructT›.offsets`    - bytes offsets for each member
@@ -503,3 +504,4 @@ new Triangle([
 * APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI
 * An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
 * Dynamic mapping of structures (useful for mapping out files like TTF font file format for example with header tables and pointer rich structures).
+* String handling and the dynamic sizing that goes along with that
