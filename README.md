@@ -30,14 +30,14 @@ StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow 
 
 At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors, like `ArrayType`. `ArrayType.__proto__` and the other share a common genesis, the top level `Type`.
 
-A _‹Type›_ is the constructor for a given type of _<Data>_, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototype, like `NumericType.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
+A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototype, like `NumericType.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
 
 
 ### ‹Type›
 
 __‹Type› as constructor__
 
-In the following, buffer can be either a buffer itself or something that has a buffer property as well, so it'll work with any ArrayBuffer, or a _<Data>_ instance.
+In the following, buffer can be either a buffer itself or something that has a buffer property as well, so it'll work with any ArrayBuffer, or a `<Data>` instance.
 Value can also be a buffer in which case the data will reified to JS then written out, thus copying the data. `new` is optional except for _‹NumericT›_.
 
 * `new ‹Type›(buffer, offset, value)` - instance using buffer, at `byteOffset || 0`, optionally initialized with value
@@ -53,13 +53,15 @@ __‹Type› static functions and properties__
 * `‹StructT›.names`      - array of field names
 * `‹StructT›.offsets`    - bytes offsets for each member
 * `‹ArrayT›.memberType`  - points to Data that constructs the type it contains
-* `‹ArrayT›.count`       - length for instances of _<Array>_.
+* `‹ArrayT›.count`       - length for instances of `<Array>`.
 * `‹BitfieldT›.flags`    - array containing flag names
 
 
 #### <Data> methods and properties
 
-_<Data>_ instances are constructed by `new ‹Type›`. It represents the interface that manages interacts with memory.
+`<Data>` instances are constructed by `new ‹Type›`. It represents the interface that manages interacts with memory.
+
+__Common__
 
 * `<Data>.bytes` - same as ‹Type›.bytes
 * `<Data>.DataType` - number type name or 'array' or 'struct' or 'bitfield'
@@ -71,13 +73,19 @@ _<Data>_ instances are constructed by `new ‹Type›`. It represents the interf
 * `<Data> accessor [get]` - returns the <Data> instance for that field, not the reified value. To get the value you can do instance[indexOrField].reify()
 * `<Data> accessor [set]` - sets the value, framed through whatever _‹Type›_ structure in place
 
+__Struct__
+
 * `<Struct>.fieldName` - field based accessors
+
+__Array__
 
 * `<Array>.write(value, index)` - optionally start from given index on the type itself
 * `<Array>[0...length]` - index based accessor
 * `<Array>.map` - Array.prototype.map
 * `<Array>.forEach` - Array.prototype.forEach
 * `<Array>.reduce` - Array.prototype.reduce
+
+__Bitfield__
 
 * `<Bitfield>.write(value)` - writes the underlying data as a single number
 * `<Bitfield>.read()` - reads the underlying data as a single number
