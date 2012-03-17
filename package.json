@@ -1,0 +1,18 @@
+{
+  "author": "Brandon Benvie <brandon@bbenvie.com> (http://bbenvie.com)",
+  "name": "reify",
+  "description": "JS Binary Data API. Structs, arrays, and data. Reify and Reference like nobody's business. (similar to ES6 binary data but not API compatible)",
+  "version": "0.0.1",
+  "homepage": "https://github.com/Benvie/reified",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Benvie/reified.git"
+  },
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  }
+}
