@@ -72,9 +72,9 @@ test('value sources', function(t){
 });
 
 test('limits', function(t){
-  t.throws(function(){ new Int8(300) }, 'throw on construct with out of bounds value');
+  t.throws(function(){ new Int8(300) }, 'throws on construct with out of bounds value');
   var int8 = new Int8;
-  t.throws(function(){ int8.write(400) }, 'throw on write out of bounds value');
-  t.throws(function(){ int8.write(new Int8(500)) }, 'throw on write out of bounds Data instance');
+  t.throws(function(){ int8.write(400) }, 'throws on write out of bounds value');
+  t.throws(function(){ int8.write(new Int8(500)) }, 'throws on write out of bounds Data instance');
   t.end();
 });

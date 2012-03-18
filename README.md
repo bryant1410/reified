@@ -54,41 +54,38 @@ new int32x4x4x2
     <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
 
 
-var DescriptorFlags = new BitfieldType('DescriptorFlags', [
-  'PRIVATE','ENUMERABLE','CONFIGURABLE','READONLY',
-  'WRITABLE','FROZEN','HIDDEN','NORMAL'
-])
-//-->
+var DescriptorFlags = new BitfieldType('DescriptorFlags', {
+  ENUMERABLE   : 1,
+  CONFIGURABLE : 2,
+  READONLY     : 3,
+  WRITABLE     : 4,
+  FROZEN       : 5,
+  HIDDEN       : 6,
+  NOTPRIVATE   : 7,
+});
+
 ‹DescriptorFlags›(8bit)
-  0x1   PRIVATE
-  0x2   ENUMERABLE
-  0x4   CONFIGURABLE
-  0x8   READONLY
-  0x10  WRITABLE
-  0x20  FROZEN
-  0x40  HIDDEN
-  0x80  NORMAL
+  0x1   ENUMERABLE
+  0x2   CONFIGURABLE
+  0x3   READONLY
+  0x4   WRITABLE
+  0x5   FROZEN
+  0x6   HIDDEN
+  0x7   NOTPRIVATE
 
-var desc = new DescriptorFlags
-desc.ENUMERABLE = true
-//-->
+var desc = new DescriptorFlags;
+desc.HIDDEN = true;
 { ‹DescriptorFlags›
-  PRIVATE: false,
-  ENUMERABLE: true,
-  CONFIGURABLE: false,
-  READONLY: false,
-  WRITABLE: false,
-  FROZEN: false,
-  HIDDEN: false,
-  NORMAL: false }
-
-‹DescriptorFlags›[01000000]
-
-desc.buffer
- <Buffer 02>
+  ENUMERABLE:   false,
+  CONFIGURABLE: true,
+  READONLY:     true,
+  WRITABLE:     true,
+  FROZEN:       true,
+  HIDDEN:       true,
+  NOTPRIVATE:   true }
 
 desc.read()
- 2
+ 6
 ```
 
 
