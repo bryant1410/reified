@@ -6,7 +6,14 @@ StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow 
 npm install reified
 ```
 
-### NumericType
+# Overview
+All of the following APIs are used in conjunction with Buffers. The purpose is to seamlessly give JavaScript mapping to an underlying set of bytes. Multiple different reified structures can point to the same underlying data. It's the same concept as DataView, except much more awesome.
+
+The following examples use reified's option to automatically allocate a buffer during construction, but any of them also work when provided an existing buffer and optional offset. The real power is loading a file or chunk of memory and mapping a protocol or file format seamlessly from bytes to JavaScript and back.
+
+#### NumericType
+Float, Double, Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64
+
 ```javascript
 var int32 = new UInt32(10000000) <UInt32> 10000000
 var int16 = new UInt16(int32)    <UInt16> 38528
@@ -18,7 +25,9 @@ int8.write(100)
 <UInt8>  100
 ```
 
-### ArrayType
+#### ArrayType
+A constructor constructor for array types. These are containers for multiples values that are of the same type. The member type can be any type, simple or complex.
+
 ```javascript
 var int32x4 = new ArrayType(Int32, 4)
 var int32x4x4 = new ArrayType(int32x4, 4)
@@ -26,7 +35,7 @@ var int32x4x4x2 = new ArrayType(int32x4x4, 2)
 //-->
 ‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
 
-new int32x4x4x2
+var array = new int32x4x4x2
 //-->
 <Int32x4x4x2>
 [ <Int32x4x4>
@@ -40,13 +49,15 @@ new int32x4x4x2
     <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
     <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
 
-inst.reify()
+array.reify()
 //-->
 [ [ [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] ],
   [ [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] ] ]
 ```
 
-### StructType
+#### StructType
+A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
+
 ```javascript
 var Point = new StructType('Point', { x: 'UInt32', y: 'UInt32' });
 var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
@@ -85,7 +96,9 @@ tri.reify()
   { point: { x: 5, y: 5 }, color: { r: 255, g: 0, b: 0 } },
   { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } } ]
 ```
-### BitfieldType
+#### BitfieldType
+A constructor constructor to create bitfields which seamlessly map between bits and a set of flags.
+
 ```javascript
 var DescriptorFlags = new BitfieldType('DescriptorFlags', {
   ENUMERABLE   : 1,
@@ -121,31 +134,16 @@ desc.read()
  6
 ```
 
-
-## Top level types
-
-* NumericTypes
-  * 1 byte  - `Int8,  UInt8`
-  * 2 bytes - `Int16, UInt16`
-  * 4 bytes - `Int32, UInt32, Float`
-  * 8 bytes - `Int64, UInt64, Double`
-
-* StructType - A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
-
-* ArrayType - A constructor constructor for array types. These are containers for multiples values that are of the same type (same memory size footprint).
-
-* BitfieldType - A constructor constructor to create bitfields which seamlessly map between bits in to a set of flags and back to memory.
-
-## Terminology
+# Terminology
 
 At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors, like `ArrayType`. `ArrayType.__proto__` and the others share a common genesis, the top level `Type`.
 
 A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototype, like `NumericType.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
 
 
-### ‹Type›
+## ‹Type›
 
-__Defining a ‹Type›__
+###Defining a ‹Type›
 
 Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_. When defining a type, the `name` is optional but it allows you to debug and format inspection output better and allows you to specify the type later using the name instead of the _‹StructT›_ itself, such as 'UInt8' in `new ArrayType('RGB', 'UInt8', 3)`.
 
@@ -154,7 +152,7 @@ Aside from the provided _‹NumericT›_'s you will be providing your own defini
 * `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multiple bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
 * `new NumericType(name, bytes)` - currently an internal API, used to initialize the preset numeric types
 
-__‹Type› as constructor__
+###‹Type› as constructor
 
 In the following, buffer can be either a buffer itself or something that has a buffer property as well, so it'll work with any ArrayBuffer, or a `<Data>` instance.
 Value can be either a JS value/object with the same structure (keys, indices, number, etc.) as the type or an instance of `<Data>` that maps to the ‹Type›. Value can also be a buffer in which case the data will reified to JS then written out, thus copying the data. `new` is optional.
@@ -162,7 +160,7 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 * `new ‹Type›(buffer, offset, value)` - instance using buffer, at `offset || 0`, optionally initialized with value.
 * `new ‹Type›(value)` - allocates new buffer initialized with value
 
-__‹Type› static functions and properties__
+###‹Type› static functions and properties
 
 * `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the ‹Type›. There's also a version of this on each top level Type, `ArrayType.isInstance(o)`
 * `‹Type›.bytes`         - byteSize of an instance of the Type
@@ -175,11 +173,11 @@ __‹Type› static functions and properties__
 * `‹BitfieldT›.flags`    - object containing flag names and the value they map to
 
 
-#### `<Data>` methods and properties
+## `<Data>` methods and properties
 
 `<Data>` instances are constructed by `new ‹Type›`. It represents the interface that manages interacts with memory.
 
-__Common__
+### Common
 
 * `<Data>.bytes` - same as ‹Type›.bytes
 * `<Data>.DataType` - number type name or 'array' or 'struct' or 'bitfield'
@@ -193,11 +191,11 @@ __Common__
 * `<Data> accessor [get]` - returns the <Data> instance for that field, not the reified value. To get the value you can do instance[indexOrField].reify()
 * `<Data> accessor [set]` - sets the value, framed through whatever _‹Type›_ structure in place
 
-__Struct__
+### Struct
 
 * `<Struct>.fieldName` - field based accessors
 
-__Array__
+### Array
 
 * `<Array>.write(value, [index])` - optionally start from given array index on the type
 * `<Array>[0...length]` - index based accessor
@@ -205,7 +203,7 @@ __Array__
 * `<Array>.forEach` - Array.prototype.forEach
 * `<Array>.reduce` - Array.prototype.reduce
 
-__Bitfield__
+### Bitfield
 
 * `<Bitfield>.write(value)` - writes the underlying data as a single number
 * `<Bitfield>.read()` - reads the underlying data as a single number
@@ -217,11 +215,6 @@ __Bitfield__
 * `<Bitfield>.map` - Array.prototype.map
 * `<Bitfield>.forEach` - Array.prototype.forEach
 * `<Bitfield>.reduce` - Array.prototype.reduce
-
-
-__Todo functionality__
-
-
 
 ## More Example Usage
 
@@ -249,7 +242,6 @@ bits.reify()
   false, true, false, false, false, false, false, false, false, false, false,
   false, false, false, false, false, false, false, false, false, false ]
 ```
-
 
 ### .lnk File Format
 ```javascript
