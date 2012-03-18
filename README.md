@@ -115,12 +115,10 @@ A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.p
 __‹Type› as constructor__
 
 In the following, buffer can be either a buffer itself or something that has a buffer property as well, so it'll work with any ArrayBuffer, or a `<Data>` instance.
-Value can also be a buffer in which case the data will reified to JS then written out, thus copying the data. `new` is optional except for _‹NumericT›_.
+Value can be either a JS value/object with the same structure (keys, indices, number, etc.) as the type or an instance of `<Data>` that maps to the ‹Type›. Value can also be a buffer in which case the data will reified to JS then written out, thus copying the data. `new` is optional.
 
-* `new ‹Type›(buffer, offset, value)` - instance using buffer, at `byteOffset || 0`, optionally initialized with value
+* `new ‹Type›(buffer, offset, value)` - instance using buffer, at `offset || 0`, optionally initialized with value.
 * `new ‹Type›(value)` - allocates new buffer initialized with value
-* `new ‹NumericT›(value)` - new is required for ‹NumericT› to construct
-* `‹NumericT›(value)` - utility to cast a number to a type (doesn't use buffer to convert)
 
 __‹Type› static functions and properties__
 
