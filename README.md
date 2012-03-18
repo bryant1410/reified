@@ -2,6 +2,10 @@
 
 StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow easy conversion to and from binary data.
 
+```
+npm install reified
+```
+
 ### NumericType
 ```javascript
 var int32 = new UInt32(10000000) <UInt32> 10000000
