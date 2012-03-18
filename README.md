@@ -2,6 +2,42 @@
 
 StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow easy conversion to and from binary data.
 
+### NumericType
+```javascript
+var int32 = new UInt32(10000000) <UInt32> 10000000
+var int16 = new UInt16(int32)    <UInt16> 38528
+var int8 = new UInt8(int16)      <UInt8>  128
+
+int8.write(100)
+<UInt32> 9999972
+<UInt16> 38500
+<UInt8>  100
+```
+
+### ArrayType
+```javascript
+var int32x4 = new ArrayType(Int32, 4)
+var int32x4x4 = new ArrayType(int32x4, 4)
+var int32x4x4x2 = new ArrayType(int32x4x4, 2)
+//-->
+‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
+
+new int32x4x4x2
+//-->
+<Int32x4x4x2>
+[ <Int32x4x4>
+  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ],
+  <Int32x4x4>
+  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
+    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
+```
+
+### StructType
 ```javascript
 var Point = new StructType('Point', { x: 'UInt32', y: 'UInt32' });
 var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
@@ -31,29 +67,9 @@ new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlu
 | right:  <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
 | bottom: <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
 | left:   <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
-
-
-var int32x4 = new ArrayType(Int32, 4)
-var int32x4x4 = new ArrayType(int32x4, 4)
-var int32x4x4x2 = new ArrayType(int32x4x4, 2)
-//-->
-‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
-
-new int32x4x4x2
-//-->
-<Int32x4x4x2>
-[ <Int32x4x4>
-  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ],
-  <Int32x4x4>
-  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
-
-
+```
+### BitfieldType
+```javascript
 var DescriptorFlags = new BitfieldType('DescriptorFlags', {
   ENUMERABLE   : 1,
   CONFIGURABLE : 2,
@@ -118,7 +134,7 @@ Aside from the provided _‹NumericT›_'s you will be providing your own defini
 
 * `new StructType(name, definition)` - Definition is an object with the desired structure, where the keys will be the fieldnames and the values are either _‹StructT›_ instances or their names.
 * `new ArrayType(name, memberType, count)` - memberType is the _‹Type›_ to be used for members, count is the preset length for each instance of `<Array>`.
-* `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multipel bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
+* `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multiple bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
 
 __‹Type› as constructor__
 
@@ -141,7 +157,7 @@ __‹Type› static functions and properties__
 * `‹BitfieldT›.flags`    - object containing flag names and the value they map to
 
 
-#### <Data> methods and properties
+#### `<Data>` methods and properties
 
 `<Data>` instances are constructed by `new ‹Type›`. It represents the interface that manages interacts with memory.
 
@@ -189,121 +205,9 @@ __Todo functionality__
 * `<Data>.clone(buffer, offset)` - copy in entirety to target buffer or item.buffer, initializing a new instance of the type over the * memory
 
 
-## Example Usage
+## More Example Usage
 
-
-### NumericType
-
-#### Instances
-```javascript
-var int32 = new UInt32(10000000) <UInt32> 10000000
-var int16 = new UInt16(int32)    <UInt16> 38528
-var int8 = new UInt8(int16)      <UInt8>  128
-```
-
-#### Shared Data
-```javascript
-int8.write(100)
-int32 <UInt32> 9999972
-int16 <UInt16> 38500
-int8  <UInt8>  100
-```
-
-### ArrayType
-
-#### Simple
-```javascript
-var RGBarray = new ArrayType('RGB', UInt8, 3)
- ‹RGB›(3b)[ 3 ‹UInt8› ]
-
-new RGBarray([0, 150, 255])
- <RGB> [ <UInt8> 0, <UInt8> 150, <UInt8> 255 ]
-```
-
-#### Multidimension
-```javascript
-var int32x4 = new ArrayType(Int32, 4)
- ‹Int32x4›(16b)[ 4 ‹Int32› ]
-
-var int32x4x4 = new ArrayType(int32x4, 4)
-//-->
-‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ]
-
-
-var int32x4x4x2 = new ArrayType(int32x4x4, 2)
-//-->
-‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
-
-
-new int32x4
- <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ]
-
-new int32x4x4
-//-->
-<Int32x4x4>
-[ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-  <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-  <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-  <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ]
-
-
-new int32x4x4x2
-//-->
-<Int32x4x4x2>
-[ <Int32x4x4>
-  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ],
-  <Int32x4x4>
-  [ <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
-    <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
-```
-
-### StructType
-
-#### Simple
-```javascript
-var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
-//-->
-‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-
-
-var fuschia = new RGB({ r: 255, g: 0, b: 255 })
-//-->
-<RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
-
-
-var deepSkyBlue = new RGB({ r: 0, g: 150, b: 255 })
-//-->
-<RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
-```
-
-#### Nested
-```javascript
-var Border = new StructType('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })
-//-->
-‹Border›(12b)
-| top:    ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-| right:  ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-| bottom: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-| left:   ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-
-
-new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlue })
-//-->
-<Border>
-| top:    <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
-| right:  <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
-| bottom: <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
-| left:   <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
-```
-
-### Bitfield
-
-#### Indexed
+### Indexed Bitfield
 ```javascript
 var bitfield = new BitfieldType(2)
  ‹Bitfield›(32bit)
@@ -328,57 +232,8 @@ bits.reify()
   false, false, false, false, false, false, false, false, false, false ]
 ```
 
-#### Flags
-```javascript
-var DescriptorFlags = new BitfieldType('DescriptorFlags', {
-  ENUMERABLE   : 1,
-  CONFIGURABLE : 2,
-  READONLY     : 3,
-  WRITABLE     : 4,
-  FROZEN       : 5,
-  HIDDEN       : 6,
-  NOTPRIVATE   : 7,
-});
 
-‹DescriptorFlags›(8bit)
-  0x1   ENUMERABLE
-  0x2   CONFIGURABLE
-  0x3   READONLY
-  0x4   WRITABLE
-  0x5   FROZEN
-  0x6   HIDDEN
-  0x7   NOTPRIVATE
-
-var desc = new DescriptorFlags;
-{ ‹DescriptorFlags›
-  ENUMERABLE:   false,
-  CONFIGURABLE: false,
-  READONLY:     false,
-  WRITABLE:     false,
-  FROZEN:       false,
-  HIDDEN:       false,
-  NOTPRIVATE:   false }
-
-desc.HIDDEN = true;
-{ ‹DescriptorFlags›
-  ENUMERABLE:   false,
-  CONFIGURABLE: true,
-  READONLY:     true,
-  WRITABLE:     true,
-  FROZEN:       true,
-  HIDDEN:       true,
-  NOTPRIVATE:   true }
-
-desc.buffer
- <Buffer 06>
-
-desc.read()
- 6
-```
-
-### Cominations
-
-#### .lnk File Format
+### .lnk File Format
 ```javascript
 var CLSID = new ArrayType('CLSID', UInt8, 16)
 var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 })
