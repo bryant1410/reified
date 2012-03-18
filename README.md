@@ -3,7 +3,7 @@
 StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow easy conversion to and from binary data.
 
 ```javascript
-var Point = new StructType('Point', { x: UInt32, y: UInt32 });
+var Point = new StructType('Point', { x: 'UInt32', y: 'UInt32' });
 var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
 var Pixel = new StructType('Pixel', { point: Point, color: RGB })
 
@@ -112,6 +112,14 @@ A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.p
 
 ### ‹Type›
 
+__Defining a ‹Type›__
+
+Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_. When defining a type, the `name` is optional but it allows you to debug and format inspection output better and allows you to specify the type later using the name instead of the _‹StructT›_ itself, such as 'UInt8' in `new ArrayType('RGB', 'UInt8', 3)`.
+
+* `new StructType(name, definition)` - Definition is an object with the desired structure, where the keys will be the fieldnames and the values are either _‹StructT›_ instances or their names.
+* `new ArrayType(name, memberType, count)` - memberType is the _‹Type›_ to be used for members, count is the preset length for each instance of `<Array>`.
+* `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multipel bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
+
 __‹Type› as constructor__
 
 In the following, buffer can be either a buffer itself or something that has a buffer property as well, so it'll work with any ArrayBuffer, or a `<Data>` instance.
@@ -130,7 +138,7 @@ __‹Type› static functions and properties__
 * `‹StructT›.offsets`    - bytes offsets for each member
 * `‹ArrayT›.memberType`  - the _‹Type›_ the array is made of
 * `‹ArrayT›.count`       - length for instances of `<Array>`.
-* `‹BitfieldT›.flags`    - array containing flag names
+* `‹BitfieldT›.flags`    - object containing flag names and the value they map to
 
 
 #### <Data> methods and properties
