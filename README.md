@@ -357,3 +357,4 @@ new Triangle([
 * An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
 * Dynamic mapping of structures (useful for mapping out files like TTF font file format for example with header tables and pointer rich structures).
 * String handling and the dynamic sizing that goes along with that
+* Make it work in browsers with ArrayBuffers
