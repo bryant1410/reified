@@ -62,9 +62,8 @@ section("ArrayType", [
   [ "Multidimension", [ "var int32x4 = new ArrayType(Int32, 4)",
                         "var int32x4x4 = new ArrayType(int32x4, 4)",
                         "var int32x4x4x2 = new ArrayType(int32x4x4, 2)",
-                        "new int32x4",
-                        "new int32x4x4",
-                        "new int32x4x4x2" ] ]
+                        "var inst = new int32x4x4x2",
+                        "inst.reify()"] ]
 ]);
 
 section("StructType", [
@@ -128,7 +127,11 @@ section("Cominations", [
                     "  defaults,",
                     "  { point: { x:  5, y: 5 }, color: red },",
                     "  { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } }",
-                    "])"].join('\n')
+                    "])"].join('\n'),
+                    "var tri2 = tri.copy()",
+                    "tri2[0].point.x = 500; tri",
+                    "tri.reify()",
+                    "tri2.reify()",
                     ]]
 ]);
 

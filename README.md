@@ -39,6 +39,11 @@ new int32x4x4x2
     <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
     <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ],
     <Int32x4> [ <Int32> 0, <Int32> 0, <Int32> 0, <Int32> 0 ] ] ]
+
+inst.reify()
+//-->
+[ [ [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] ],
+  [ [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ], [ 0, 0, 0, 0 ] ] ]
 ```
 
 ### StructType
@@ -54,23 +59,31 @@ var Triangle = new ArrayType('Triangle', Pixel, 3)
   | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
   | color: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
 
-var Border = new StructType('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })
-//-->
-‹Border›(12b)
-| top:    ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-| right:  ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-| bottom: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
-| left:   ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }
 
-var fuschia = new RGB({ r: 255, g: 0, b: 255 })
-var deepSkyBlue = new RGB({ r: 0, g: 150, b: 255 })
-new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlue })
+var origin = Pixel({ point: Point({ x: 0, y: 0 }), color: Color({ r: 255, g: 255, b: 255 }) });
+var tri = new Triangle([
+  origin,
+  { point: { x:  5, y: 5 }, color: { r: 255, g: 0, b: 0 } },
+  { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } }
+])
+
 //-->
-<Border>
-| top:    <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
-| right:  <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
-| bottom: <RGB> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 255 }
-| left:   <RGB> { r: <UInt8> 0 | g: <UInt8> 150 | b: <UInt8> 255 }
+<Triangle>
+[ <Pixel>
+  | point: <Point> { x: <UInt32> 0 | y: <UInt32> 0 }
+  | color: <Color> { r: <UInt8> 255 | g: <UInt8> 255 | b: <UInt8> 255 },
+  <Pixel>
+  | point: <Point> { x: <UInt32> 5 | y: <UInt32> 5 }
+  | color: <Color> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 0 },
+  <Pixel>
+  | point: <Point> { x: <UInt32> 10 | y: <UInt32> 0 }
+  | color: <Color> { r: <UInt8> 0 | g: <UInt8> 0 | b: <UInt8> 128 } ]
+
+tri.reify()
+//-->
+[ { point: { x: 0, y: 0 }, color: { r: 255, g: 255, b: 255 } },
+  { point: { x: 5, y: 5 }, color: { r: 255, g: 0, b: 0 } },
+  { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } } ]
 ```
 ### BitfieldType
 ```javascript
@@ -139,6 +152,7 @@ Aside from the provided _‹NumericT›_'s you will be providing your own defini
 * `new StructType(name, definition)` - Definition is an object with the desired structure, where the keys will be the fieldnames and the values are either _‹StructT›_ instances or their names.
 * `new ArrayType(name, memberType, count)` - memberType is the _‹Type›_ to be used for members, count is the preset length for each instance of `<Array>`.
 * `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multiple bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
+* `new NumericType(name, bytes)` - currently an internal API, used to initialize the preset numeric types
 
 __‹Type› as constructor__
 
@@ -171,9 +185,11 @@ __Common__
 * `<Data>.DataType` - number type name or 'array' or 'struct' or 'bitfield'
 * `<Data>.write(value)` - primarily for setting the value of the whole thing at once depending on type
 * `<Data>.reify()` - recursively convert to JavaScript objects/values
-* `<Data>.fill(value)` - fills each distinct area of the type with value. (array indices, struct members, same as write for number)
-* `<Data>.rebase(buffer)` - update view to another buffer
+* `<Data>.fill([value])` - fills each distinct area of the type with value or 0. (array indices, struct members, same as write for number)
+* `<Data>.rebase([buffer])` - switch to another buffer or allocates a new buffer
 * `<Data>.realign(offset)` - change offset of view, keeping same buffer
+* `<Data>.clone()` - create a copy of `<Data>` pointing to the same buffer and offset
+* `<Data>.copy([buffer], [offset])` - create a copy of `<Data>` pointing to the provided buffer and offset or new buffer and 0, copying buffer data byte for byte
 * `<Data> accessor [get]` - returns the <Data> instance for that field, not the reified value. To get the value you can do instance[indexOrField].reify()
 * `<Data> accessor [set]` - sets the value, framed through whatever _‹Type›_ structure in place
 
@@ -183,7 +199,7 @@ __Struct__
 
 __Array__
 
-* `<Array>.write(value, index)` - optionally start from given index on the type itself
+* `<Array>.write(value, [index])` - optionally start from given array index on the type
 * `<Array>[0...length]` - index based accessor
 * `<Array>.map` - Array.prototype.map
 * `<Array>.forEach` - Array.prototype.forEach
@@ -205,8 +221,6 @@ __Bitfield__
 
 __Todo functionality__
 
-* `<Data>.copy(buffer, startSource, startDest, length)` - direct copying at buffer level to buffer or item.buffer
-* `<Data>.clone(buffer, offset)` - copy in entirety to target buffer or item.buffer, initializing a new instance of the type over the * memory
 
 
 ## More Example Usage
@@ -318,47 +332,10 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
 | ShowCommand:    ‹UInt32›
 ```
 
-### Triangle
-
-```javascript
-var Point = new StructType('Point', { x: UInt32, y: UInt32 });
-var Color = new StructType('Color', { r: UInt8, g: UInt8, b: UInt8 });
-var Pixel = new StructType('Pixel', { point: Point, color: Color });
-var Triangle = new ArrayType('Triangle', Pixel, 3);
-//-->
-‹Triangle›(33b)
-[ 3 ‹Pixel›(11b)
-  | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
-  | color: ‹Color›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
-
-
-var white = new Color({ r: 255, g: 255, b: 255 });
-var red = new Point({ r: 255, g: 0, b: 0 });
-var origin = new Point({ x: 0, y: 0 });
-var defaults = new Pixel({ point: origin, color: white });
-
-new Triangle([
-  defaults,
-  { point: { x:  5, y: 5 }, color: red },
-  { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } }
-])
-//-->
-<Triangle>
-[ <Pixel>
-  | point: <Point> { x: <UInt32> 0 | y: <UInt32> 0 }
-  | color: <Color> { r: <UInt8> 255 | g: <UInt8> 255 | b: <UInt8> 255 },
-  <Pixel>
-  | point: <Point> { x: <UInt32> 5 | y: <UInt32> 5 }
-  | color: <Color> { r: <UInt8> 0 | g: <UInt8> 0 | b: <UInt8> 0 },
-  <Pixel>
-  | point: <Point> { x: <UInt32> 10 | y: <UInt32> 0 }
-  | color: <Color> { r: <UInt8> 0 | g: <UInt8> 0 | b: <UInt8> 128 } ]
-```
-
 ## TODO
 
 * APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI
 * An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
-* Dynamic mapping of structures (useful for mapping out files like TTF font file format for example with header tables and pointer rich structures).
+* Dynamic mapping of structures that use indirection, for example the TTF font file format with header tables and pointer rich structures.
 * String handling and the dynamic sizing that goes along with that
 * Make it work in browsers with ArrayBuffers
