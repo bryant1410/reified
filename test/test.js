@@ -1,4 +1,4 @@
-var inspect = require('../lib/utility').inspect;
+var inspect = require('util').inspect;
 require('../lib/utility').MAKE_ALL_ENUMERABLE();
 
 //delete Buffer.prototype.inspect;
@@ -32,7 +32,7 @@ function section(label, codeArray){
       if (code.slice(0,3) === 'var') {
         result = eval(code.split(' ')[1]);
       }
-      result = inspect(result);
+      result = inspect(result, false, 6);
       if (!~result.indexOf('\n') && result.length + code.length < 80) {
         console.log(code + '\n '+result+'\n');
       } else {
@@ -84,7 +84,7 @@ section("Bitfield", [
                  "bits.reify()" ] ],
   [ "Flags",   [ "var Desc = new BitfieldType('DescriptorFlags', "+
                  "['ENUMERABLE','CONFIGURABLE','WRITABLE'])",
-                 "inst = new Desc ",
+                 "inst = new Desc",
                  "inst.ENUMERABLE = true; inst",
                  "inst.buffer",
                  "inst.read()",
