@@ -38,6 +38,10 @@ var int32x4x4x2 = Int32[4][4][2]
 ‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
 
 var array = new int32x4x4x2
+//or
+var array = new reified('Int32[4][4][2]')
+//or
+var array = new Int32[4][4][2]
 //-->
 <Int32x4x4x2>
 [ <Int32x4x4>

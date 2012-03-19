@@ -60,7 +60,7 @@ section("ArrayType", [
   [ "Simple", [ "var RGBarray = reified('RGBarray', 'UInt8[3]')",
                 "new RGBarray([0, 150, 255])" ] ],
   [ "Multidimension", [ "var int32x4x4x2 = reified('Int32[4][4][2]')",
-                        "var inst = new int32x4x4x2",
+                        "var inst = new reified('Int32[4][4][2]')",
                         "inst.reify()"] ]
 ]);
 
