@@ -136,9 +136,9 @@ desc.read()
 
 # Terminology
 
-At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors, like `ArrayType`. `ArrayType.__proto__` and the others share a common genesis, the top level `Type`.
+At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors' prototypes like `ArrayType.prototype`. `ArrayType.protoype.__proto__` and the others share a common genesis, the top level `Type`.
 
-A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototype, like `NumericType.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
+A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototypes, `‹Type›.prototype.prototype`, like `NumericType.prototype.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
 
 
 ## ‹Type›
@@ -326,6 +326,7 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
 
 ## TODO
 
+* Remove all dependence on __proto__ for host agnostic usage. Once that's done the question remains whether to use it when possible or to have parity across implementations.
 * Less Memory vs. Fastest Execution mode. More memory usage is how it currently works: `<Data>` instances are initialized on construction and take as much or more memory than the thing they represent, but are fast. The less memory mode would intialize them on demand in order to read or write but would involve the execution cost of that initialization with reading. Or find a balance.
 * APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI.
 * An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
