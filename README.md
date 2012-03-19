@@ -138,16 +138,21 @@ desc.read()
  6
 ```
 
+
 # Terminology
 
 At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors' prototypes like `ArrayType.prototype`. `ArrayType.protoype.__proto__` and the others share a common genesis, the top level `Type`.
 
 A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototypes, `‹Type›.prototype.prototype`, like `NumericType.prototype.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
 
+## Cavaeats/Notes
 
-## ‹Type›
+Currently, index and field accessors on arrays and structs are lazily created and defined. This means something like `Object.keys(<Data>)` isn't reliable. The purpose of this is so that a JavaScript representation of data isn't created until it's actually needed, otherwise simply using _reified_ would use more memory than the data it's providing a view for. This will be addressed with an optional add-on component implementing Harmony Proxies. The trade-off is that these require running Node with a special flag, or in browsers require special flags, dev versions, etc.
 
-###Defining a ‹Type›
+
+# ‹Type›
+
+##Defining a ‹Type›
 
 Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_.
 
@@ -158,7 +163,7 @@ When defining a type, the `name` is optional but it allows you to reference the 
 * `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multiple bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
 * `new NumericType(name, bytes)` - currently an internal API, used to initialize the preset numeric types
 
-The base export function `reified` is a shortcut for all of these functions.
+The base export function `reified` is a shortcut for all of these constructors.
 
 * `reified('UInt8')` - returns the _‹Type›_ that matches the name
 * `reified('UInt8[10]')` - returns an _‹ArrayT›_ for the specified type and size
@@ -171,35 +176,35 @@ The base export function `reified` is a shortcut for all of these functions.
 * `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
 * `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
 
-###‹Type› as constructor
+## ‹Type› as constructor
 
 In the following, buffer can be either a buffer itself or something that has a buffer property as well, so it'll work with any ArrayBuffer, or a `<Data>` instance.
-Value can be either a JS value/object with the same structure (keys, indices, number, etc.) as the type or an instance of `<Data>` that maps to the ‹Type›. Value can also be a buffer in which case the data will reified to JS then written out, thus copying the data. `new` is optional.
+Value can be either a JS value/object with the same structure (keys, indices, number, etc.) as the type or an instance of `<Data>` that maps to the ‹Type›. Value can also be a buffer in which case the data will be reified to JS then written out, thus copying the data. `new` is optional.
 
 * `new ‹Type›(buffer, offset, value)` - instance using buffer, at `offset || 0`, optionally initialized with value.
 * `new ‹Type›(value)` - allocates new buffer initialized with value
 * `new reified('TypeName', buffer, offset, value)` - a shortcut for the above (`new` required)
 * `reified.data('TypeName', buffer, offset, value)` - also a shortcut for the above
 
-###‹Type› static functions and properties
+## ‹Type› static functions and properties
 
-* `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the ‹Type›. There's also a version of this on each top level Type, `ArrayType.isInstance(o)`
-* `‹Type›.bytes`         - byteSize of an instance of the Type
-* `‹Type›.array(n)`      - create a new ‹ArrayT› from ‹Type› with _n_ size
-* `‹Type›[1..20]`        - shortcut for `‹Type›.array(n)` for __n__'s up to 20
-* `‹StructT›.fields`     - frozen structure reference with fieldName --> Data that constructs it
-* `‹StructT›.names`      - array of field names
-* `‹StructT›.offsets`    - bytes offsets for each member
-* `‹ArrayT›.memberType`  - the _‹Type›_ the array is made of
-* `‹ArrayT›.count`       - length for instances of `<Array>`.
-* `‹BitfieldT›.flags`    - object containing flag names and the value they map to
+* `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the _‹Type›_. This also works on each top level Type, `ArrayType.isInstance(o)`, and even `Type.istance(o)` if it's `<Data>` of any kind
+* `‹Type›.bytes` - byteSize of an instance of the Type
+* `‹Type›.array(n)` - create a new ‹ArrayT› from ‹Type› with _n_ size
+* `‹Type›[1..20]` - shortcut for `‹Type›.array(n)` for __n__'s up to 20
+* `‹StructT›.fields` - frozen structure reference with fieldName --> Data that constructs it
+* `‹StructT›.names`  - array of field names
+* `‹StructT›.offsets` - bytes offsets for each member
+* `‹ArrayT›.memberType` - the _‹Type›_ the array is made of
+* `‹ArrayT›.count` - length for instances of `<Array>`.
+* `‹BitfieldT›.flags` - object containing flag names and the value they map to
 
 
 ## `<Data>` methods and properties
 
-`<Data>` instances are constructed by `new ‹Type›`. It represents the interface that manages interacts with memory.
+`<Data>` instances are constructed by `‹Type›`'s. They are the interface that directly maps to memory and modifies it.
 
-### Common
+## Common
 
 * `<Data>.bytes` - same as ‹Type›.bytes
 * `<Data>.DataType` - number type name or 'array' or 'struct' or 'bitfield'
@@ -207,25 +212,25 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 * `<Data>.reify()` - recursively convert to JavaScript objects/values
 * `<Data>.fill([value])` - fills each distinct area of the type with value or 0. (array indices, struct members, same as write for number)
 * `<Data>.rebase([buffer])` - switch to another buffer or allocates a new buffer
-* `<Data>.realign(offset)` - change offset of view, keeping same buffer
+* `<Data>.realign(offset)` - changes the offset on the current buffer
 * `<Data>.clone()` - create a copy of `<Data>` pointing to the same buffer and offset
 * `<Data>.copy([buffer], [offset])` - create a copy of `<Data>` pointing to the provided buffer and offset or new buffer and 0, copying buffer data byte for byte
-* `<Data> accessor [get]` - returns the <Data> instance for that field, not the reified value. To get the value you can do instance[indexOrField].reify()
-* `<Data> accessor [set]` - sets the value, framed through whatever _‹Type›_ structure in place
+* `<Data> accessor [get]` - returns the `<Data>` instance for that field, not the reified value. To get the value: `instance[indexOrField].reify()`
+* `<Data> accessor [set]` - sets the value, mapping the structure in terms of arrays and objects to indices and fields.
 
-### Struct
+## Struct
 
 * `<Struct>.fieldName` - field based accessors
 
-### Array
+## Array
 
-* `<Array>.write(value, [index])` - optionally start from given array index on the type
+* `<Array>.write(value, [index], [offset])` - optionally start from given array index on the type, with optional offset as the starting index for reading from the source
 * `<Array>[0...length]` - index based accessor
 * `<Array>.map` - Array.prototype.map
 * `<Array>.forEach` - Array.prototype.forEach
 * `<Array>.reduce` - Array.prototype.reduce
 
-### Bitfield
+## Bitfield
 
 * `<Bitfield>.write(value)` - writes the underlying data as a single number
 * `<Bitfield>.read()` - reads the underlying data as a single number
@@ -233,16 +238,17 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 * `<Bitfield>.set(index)` - set bit at index to 1
 * `<Bitfield>.unset(index)` - set bit at index to 0
 * `<Bitfield>[0...length]` - index based accessor
-* `<Bitfield>.flagName` - flag based accessor
+* `<Bitfield>.flagName` - flag based accessor, which can set multiple bits at once based on initial definition
 * `<Bitfield>.map` - Array.prototype.map
 * `<Bitfield>.forEach` - Array.prototype.forEach
 * `<Bitfield>.reduce` - Array.prototype.reduce
+* `<Bitfield>.toString` - String of the bits in 1's and 0's
 
-## More Example Usage
+# More Example Usage
 
-### Indexed Bitfield
+## Indexed Bitfield
 ```javascript
-var bitfield = new BitfieldType(2)
+var bitfield = new BitfieldType(4)
  ‹Bitfield›(32bit)
 
 var bits = new bitfield
@@ -265,7 +271,7 @@ bits.reify()
   false, false, false, false, false, false, false, false, false, false ]
 ```
 
-### .lnk File Format
+## .lnk File Format
 ```javascript
 var CLSID = new ArrayType('CLSID', UInt8, 16)
 var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 })

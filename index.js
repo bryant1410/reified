@@ -1,5 +1,7 @@
-var ViewBuffer = require('./lib/buffer');
-var lookupType = require('./lib/genesis').lookupType;
+var ViewBuffer   = require('./lib/buffer');
+var D            = require('./lib/utility').desc;
+var lookupType   = require('./lib/genesis').lookupType;
+var Data         = require('./lib/genesis').Type;
 var registerType = require('./lib/genesis').registerType;
 
 module.exports = reified;
@@ -21,11 +23,11 @@ function reified(type, subject, size, values){
       return subject.rename(type);
     }
     if (typeof subject === 'string' || subject.Class === 'Type') {
-      return new reified.Array(type, subject, size);
+      return new reified.ArrayType(type, subject, size);
     } else if (Array.isArray(subject) || typeof subject === 'number' || size) {
-      return new reified.Bitfield(type, subject, size);
+      return new reified.BitfieldType(type, subject, size);
     } else {
-      return new reified.Struct(type, subject);
+      return new reified.StructType(type, subject);
     }
   }
 }
@@ -35,12 +37,16 @@ reified.data = function data(type, buffer, offset, values){
   if (typeof type === 'string') throw new TypeError('Type not found "'+type+'"');
   return new type(buffer, offset, values);
 }
+reified.isType = function isType(o){ return Type.isPrototypeOf(o) }
+reified.isData = function isData(o){ return Type.prototype.isPrototypeOf(o) }
 
-reified.Numeric = require('./lib/numeric');
-reified.Struct = require('./lib/struct');
-reified.Array = require('./lib/array');
-reified.Bitfield = require('./lib/bitfield');
-reified.ViewBuffer = ViewBuffer;
+Object.defineProperties(reified, {
+  NumericType:   D._CW(require('./lib/numeric')),
+  StructType:    D._CW(require('./lib/struct')),
+  ArrayType:     D._CW(require('./lib/array')),
+  BitfieldType:  D._CW(require('./lib/bitfield')),
+  ViewBuffer:    D._CW(require('./lib/buffer')),
+})
 
 Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,

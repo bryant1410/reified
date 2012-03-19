@@ -1,20 +1,3 @@
-var BitfieldType = require('../lib/bitfield');
-
-var DescriptorFlags = new BitfieldType('DescriptorFlags', {
-  ENUMERABLE   : 1,
-  CONFIGURABLE : 2,
-  READONLY     : 3,
-  WRITABLE     : 4,
-  FROZEN       : 5,
-  HIDDEN       : 6,
-  NOTPRIVATE   : 7,
-});
-
-desc = new DescriptorFlags;
-desc.HIDDEN = true;
-
-
-
 var tap = require("tap");
 var test = tap.test;
 var Buffer = require('../lib/buffer');
