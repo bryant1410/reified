@@ -120,7 +120,7 @@ section("Cominations", [
                     "var Pixel = new StructType('Pixel', { point: Point, color: Color });",
                     "var Triangle = new ArrayType('Triangle', Pixel, 3);",
                     "var white = new Color({ r: 255, g: 255, b: 255 });",
-                    "var red = new Point({ r: 255, g: 0, b: 0 });",
+                    "var red = new Color({ r: 255, g: 0, b: 0 });",
                     "var origin = new Point({ x: 0, y: 0 });",
                     "var defaults = new Pixel({ point: origin, color: white });",
                     ["var tri = new Triangle([",
