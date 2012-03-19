@@ -327,8 +327,9 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
 ## TODO
 
 * Less Memory vs. Fastest Execution mode. More memory usage is how it currently works: `<Data>` instances are initialized on construction and take as much or more memory than the thing they represent, but are fast. The less memory mode would intialize them on demand in order to read or write but would involve the execution cost of that initialization with reading. Or find a balance.
-* APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI
+* APIs/wrappers for handling indiration (pointers), as the initial use case is for FFI.
 * An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
 * Dynamic mapping of structures that use indirection, for example the TTF font file format with header tables and pointer rich structures.
-* String handling and the dynamic sizing that goes along with that
-* Make it work in browsers with ArrayBuffers
+* String handling and the dynamic sizing that goes along with that.
+* Make it work in browsers with ArrayBuffers and DataView. This can probably be done with a modified ViewBuffer built on top of DataView/ArrayBuffer instead of node's Buffer, along with some tweaks to incompatible code.
+* After making it work with DataViews, find more optimization points. Many of these will likely be engine specific.
