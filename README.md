@@ -151,7 +151,7 @@ A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.p
 
 Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_.
 
-When defining a type, the `name` is optional but it allows you to reference the type by name either using the foundation export `createData` function or when defining new types. It also helps format inspection output better and is used in debug output.
+When defining a type, the `name` is optional but it allows you to reference the type by name either using the primary interface exported, the `reified` function, or when defining new types. It also helps format inspection output better and is used in debug output.
 
 * `new StructType(name, definition)` - Definition is an object with the desired structure, where the keys will be the fieldnames and the values are either _‹StructT›_ instances or their names.
 * `new ArrayType(name, memberType, count)` - memberType is the _‹Type›_ to be used for members, count is the preset length for each instance of `<Array>`.
