@@ -32,7 +32,7 @@ function section(label, codeArray){
       if (code.slice(0,3) === 'var') {
         result = eval(code.split(' ')[1]);
       }
-      result = inspect(result, false, 6);
+      result = inspect(result, false, 6, process.stdout._type === 'tty');
       if (!~result.indexOf('\n') && result.length + code.length < 80) {
         console.log(code + '\n '+result+'\n');
       } else {
