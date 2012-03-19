@@ -31,6 +31,9 @@ A constructor constructor for array types. These are containers for multiples va
 
 ```javascript
 var int32x4x4x2 = reified('Int32[4][4][2]')
+//or
+var Int32 = reified('Int32')
+var int32x4x4x2 = Int32[4][4][2]
 //-->
 ‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
 
