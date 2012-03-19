@@ -1,8 +1,8 @@
-var ViewBuffer   = require('./lib/buffer');
 var D            = require('./lib/utility').desc;
-var lookupType   = require('./lib/genesis').lookupType;
 var Data         = require('./lib/genesis').Type;
+var lookupType   = require('./lib/genesis').lookupType;
 var registerType = require('./lib/genesis').registerType;
+var BuffBuffer   = require('./lib/buffer').BuffBuffer;
 
 module.exports = reified;
 
@@ -45,17 +45,17 @@ Object.defineProperties(reified, {
   StructType:    D._CW(require('./lib/struct')),
   ArrayType:     D._CW(require('./lib/array')),
   BitfieldType:  D._CW(require('./lib/bitfield')),
-  ViewBuffer:    D._CW(require('./lib/buffer')),
+  BuffBuffer:    D._CW(BuffBuffer),
 })
 
 Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
   configurable: true,
   get: function(){
-  	return ViewBuffer.prototype.endianness;
+  	return BuffBuffer.prototype.endianness;
   },
   set: function(v){
   	if (v !== 'LE' && v !== 'BE') throw new Error('Endianness must be "BE" or "LE"');
-  	ViewBuffer.prototype.endianness = v;
+  	BuffBuffer.prototype.endianness = v;
   }
 });
