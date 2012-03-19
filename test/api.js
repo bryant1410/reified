@@ -1,6 +1,6 @@
 var tap = require("tap");
 var test = tap.test;
-var Buffer = require('../lib/buffer');
+var BuffBuffer = require('../lib/buffer').BuffBuffer;
 var reified;
 
 test('load', function(t){
@@ -36,19 +36,12 @@ test('reified as Data constructor', function(t){
   t.similar(new reified(Int32[2][2], [[1,2],[3,4]]).reify(), [[1,2],[3,4]], 'multidimensional init values are passed');
   function OCT(n){ return [n,0,0,0] }
   var flatten = Function.call.bind([].concat, []);
-  var buff = new Buffer(flatten(OCT(1), OCT(2), OCT(3), OCT(4)));
+  var buff = new BuffBuffer(flatten(OCT(1), OCT(2), OCT(3), OCT(4)));
   t.similar(new reified(Int32[2][2], buff).reify(), [[1,2],[3,4]], 'Provided buffer reifies correctly');
   t.end();
 });
 
 
-//`reified('UInt8')` - returns the _‹Type›_ that matches the name
-//`reified('UInt8[10]')` - returns an _‹ArrayT›_ for the specified type and size
-//`reified('UInt8[10][10][10]')` - arrays can be nested arbitrarily
-//`reified('Octets', 'UInt8[10]')` - A label can also be specified
-//`reified('RenameOctets', Octets)` - If the second parameter is a _‹Type›_ and there's no third parameter the type is renamed
-//`reified('OctetSet', 'Octets', 10)` - An array is created if the third parameter is a number and the second resolves to a _‹Type›_
-//`reified('RGB', { r: 'UInt8', g: 'UInt8', b: 'UInt8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
 //`reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
 //`reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
 //`reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.

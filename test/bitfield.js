@@ -1,6 +1,5 @@
 var tap = require("tap");
 var test = tap.test;
-var Buffer = require('../lib/buffer');
 var Bitfield;
 var Desc;
 

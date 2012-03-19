@@ -1,6 +1,6 @@
 var tap = require("tap");
 var test = tap.test;
-var Buffer = require('../lib/buffer');
+var BuffBuffer = require('../lib/buffer').BuffBuffer;
 var numeric;
 var Int8;
 
@@ -41,7 +41,7 @@ test('buffer auto-allocate', function(t){
 });
 
 test('provided buffer', function(t){
-  var buffer = new Buffer(1);
+  var buffer = new BuffBuffer(1);
   buffer[0] = 30;
   var int8 = new Int8(buffer);
   t.equal(int8.buffer, buffer, 'buffer property matches given buffer');
