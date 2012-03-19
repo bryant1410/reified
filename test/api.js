@@ -6,7 +6,7 @@ var reified;
 test('load', function(t){
   t.ok(reified = require('../'), 'reified loaded');
   t.similar(Object.keys(reified).sort(), ['data','defaultEndian','isData','isType'], 'reified has all expected enumerable names');
-  t.similar(Object.getOwnPropertyNames(reified).sort(), ['ArrayType','BitfieldType','NumericType','StructType','ViewBuffer','arguments','caller','data','defaultEndian','isData','isType','length','name','prototype'], 'reified has all expected names');
+  t.similar(Object.getOwnPropertyNames(reified).sort(), ['ArrayType','BitfieldType','BuffBuffer','NumericType','StructType','arguments','caller','data','defaultEndian','isData','isType','length','name','prototype'], 'reified has all expected names');
   t.end();
 });
 
@@ -22,7 +22,7 @@ test('reified as Type constructor', function(t){
   int8x10.rename('Renamed');
   var instance = new int8x10;
   t.equal(instance.constructor.name, 'Renamed', 'renaming changes existing prototypes');
-  t.equal(reified('RGB', { r: 'UInt8', g: 'UInt8', b: 'UInt8' }).inspect(), '‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› }', 'StructType created');
+  t.equal(reified('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8' }).inspect(), '‹RGB›(3b) { r: ‹Uint8› | g: ‹Uint8› | b: ‹Uint8› }', 'StructType created');
   t.end();
 });
 

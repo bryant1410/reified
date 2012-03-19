@@ -4,10 +4,10 @@ require('../lib/utility').MAKE_ALL_ENUMERABLE();
 //delete Buffer.prototype.inspect;
 
 var reified = require('../')
-var Numerics = reified.Numeric;
-var ArrayType = reified.Array;
-var StructType = reified.Struct;
-var BitfieldType = reified.Bitfield;
+var Numerics = reified.NumericType;
+var ArrayType = reified.ArrayType;
+var StructType = reified.StructType;
+var BitfieldType = reified.BitfieldType;
 
 // local scope ahoy
 for (var k in Numerics) eval('var '+k+' = Numerics.'+k);
@@ -47,9 +47,9 @@ function section(label, codeArray){
 
 
 section("NumericType", [
-  [ "Instances", [ "var int32 = new reified('UInt32', 10000000)",
-                   "var int16 = new reified('UInt16', int32)",
-                   "var int8 = new reified('UInt8', int16)" ] ],
+  [ "Instances", [ "var int32 = new reified('Uint32', 10000000)",
+                   "var int16 = new reified('Uint16', int32)",
+                   "var int8 = new reified('Uint8', int16)" ] ],
   [ "Shared Data", [ "int8.write(100)",
                      "int32",
                      "int16",
@@ -57,7 +57,7 @@ section("NumericType", [
 ]);
 
 section("ArrayType", [
-  [ "Simple", [ "var RGBarray = reified('RGBarray', 'UInt8[3]')",
+  [ "Simple", [ "var RGBarray = reified('RGBarray', 'Uint8[3]')",
                 "new RGBarray([0, 150, 255])" ] ],
   [ "Multidimension", [ "var int32x4x4x2 = reified('Int32[4][4][2]')",
                         "var inst = new reified('Int32[4][4][2]')",
@@ -65,7 +65,7 @@ section("ArrayType", [
 ]);
 
 section("StructType", [
-  [ "Simple", [ "var RGB = reified('RGB', { r: 'UInt8', g: 'UInt8', b: 'UInt8' })",
+  [ "Simple", [ "var RGB = reified('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8' })",
                 "var fuschia = new RGB({ r: 255, g: 0, b: 255 })",
                 "var deepSkyBlue = new reified('RGB', { r: 0, g: 150, b: 255 })" ] ],
   [ "Nested", [ "var Border = reified('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })",
@@ -91,7 +91,7 @@ section("Bitfield", [
 ]);
 
 section("Cominations", [
-  [ ".lnk File Format", [ "var CLSID = new ArrayType('CLSID', 'UInt8', 16)",
+  [ ".lnk File Format", [ "var CLSID = new ArrayType('CLSID', 'Uint8', 16)",
                           "var LinkFlags = new BitfieldType('LinkFlags', ['HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath',\n"+
                           "  'HasWorkingDir','HasArguments','HasIconLocation','IsUnicode','ForceNoLinkInfo','HasExpString','RunInSeparateProcess',\n"+
                           "  'UNUSED1','HasDarwinID','RunAsUser','HasExpIcon','NoPidAlias','UNUSED2','RunWithShimLayer','ForceNoLinkTrack',\n"+
@@ -99,22 +99,22 @@ section("Cominations", [
                           "  'AllowLinkToLink','UnaliasOnSave','PreferEnvironmentPath','KeepLocalIDListForUNCTarget'\n]);",
                           "var FileAttributesFlags = new BitfieldType('FileAttributesFlags', ['READONLY','HIDDEN','SYSTEM','UNUSED1','DIRECTORY','ARCHIVE',\n"+
                           "  'UNUSED2','NORMAL','TEMPORARY','SPARSE_FILE','REPARSE_POINT','COMPRESSED','OFFLINE','NOT_CONTENT_INDEXED','ENCRYPTED'\n])",
-                          "var FILETIME = new StructType('FILETIME', { Low: UInt32, High: UInt32 })",
+                          "var FILETIME = new StructType('FILETIME', { Low: Uint32, High: Uint32 })",
                           ["var ShellLinkHeader = new StructType('ShellLinkHeader', {",
-                          "  HeaderSize: UInt32,",
+                          "  HeaderSize: Uint32,",
                           "  LinkCLSID:  CLSID,",
                           "  LinkFlags:  LinkFlags,",
                           "  FileAttributes: FileAttributesFlags,",
                           "  CreationTime:  FILETIME,",
                           "  AccessTime:  'FILETIME',",
                           "  WriteTime:  FILETIME,",
-                          "  FileSize: UInt32,",
+                          "  FileSize: Uint32,",
                           "  IconIndex: Int32,",
-                          "  ShowCommand: UInt32",
+                          "  ShowCommand: Uint32",
                           "});"].join('\n'),
                           "new ShellLinkHeader"]],
-  [ "Graphics",   [ "var Point = reified('Point', { x: UInt32, y: UInt32 });",
-                    "var Color = reified('Color', { r: UInt8, g: UInt8, b: UInt8 });",
+  [ "Graphics",   [ "var Point = reified('Point', { x: Uint32, y: Uint32 });",
+                    "var Color = reified('Color', { r: Uint8, g: Uint8, b: Uint8 });",
                     "var Pixel = reified('Pixel', { point: Point, color: Color });",
                     "var Triangle = reified('Triangle', Pixel[3]);",
                     "var white = new Color({ r: 255, g: 255, b: 255 });",

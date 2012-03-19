@@ -6,7 +6,7 @@ var Int8;
 
 test('load', function(t){
   t.ok(numeric = require('../lib/numeric'), 'numerics loaded');
-  t.equal(Object.keys(numeric).sort()+'', 'Double,Float,Int16,Int32,Int64,Int8,UInt16,UInt32,UInt64,UInt8', 'numerics has all expected names');
+  t.equal(Object.keys(numeric).sort()+'', 'Float32,Float64,Int16,Int32,Int64,Int8,Uint16,Uint32,Uint64,Uint8', 'numerics has all expected names');
   t.end();
 });
 

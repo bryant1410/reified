@@ -12,18 +12,18 @@ All of the following APIs are used in conjunction with Buffers. The purpose is t
 The following examples use reified's option to automatically allocate a buffer during construction, but any of them also work when provided an existing buffer and optional offset. The real power is loading a file or chunk of memory and mapping a protocol or file format seamlessly from bytes to JavaScript and back.
 
 #### NumericType
-Float, Double, Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64
+Float32, Float64, Int8, Uint8, Int16, Uint16, Int32, Uint32, Int64, Uint64
 
 ```javascript
 var reified = require('reified');
-var int32 = reified('UInt32', 10000000) <UInt32> 10000000
-var int16 = reified('UInt16', int32)    <UInt16> 38528
-var int8 = reified('UInt8', int16)      <UInt8>  128
+var int32 = reified('Uint32', 10000000) <Uint32> 10000000
+var int16 = reified('Uint16', int32)    <Uint16> 38528
+var int8 = reified('Uint8', int16)      <Uint8>  128
 
 int8.write(100)
-<UInt32> 9999972
-<UInt16> 38500
-<UInt8>  100
+<Uint32> 9999972
+<Uint16> 38500
+<Uint8>  100
 ```
 
 #### ArrayType
@@ -65,16 +65,16 @@ array.reify()
 A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
 
 ```javascript
-var Point = reified('Point', { x: UInt32, y: UInt32 });
-var Color = reified('Color', { r: 'UInt8', g: 'UInt8', b: 'UInt8' })
+var Point = reified('Point', { x: Uint32, y: Uint32 });
+var Color = reified('Color', { r: 'Uint8', g: 'Uint8', b: 'Uint8' })
 var Pixel = reified('Pixel', { point: Point, color: Color });
 
 var Triangle = reified('Triangle', Pixel[3]);
 //-->
 ‹Triangle›(33b)
 [ 3 ‹Pixel›(11b)
-  | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
-  | color: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
+  | point: ‹Point›(8b) { x: ‹Uint32› | y: ‹Uint32› }
+  | color: ‹RGB›(3b) { r: ‹Uint8› | g: ‹Uint8› | b: ‹Uint8› } ]
 
 var tri = new Triangle([
   { point: { x:  0, y: 0 }, color: { r: 255, g: 255, b: 255 } },
@@ -85,14 +85,14 @@ var tri = new Triangle([
 //-->
 <Triangle>
 [ <Pixel>
-  | point: <Point> { x: <UInt32> 0 | y: <UInt32> 0 }
-  | color: <Color> { r: <UInt8> 255 | g: <UInt8> 255 | b: <UInt8> 255 },
+  | point: <Point> { x: <Uint32> 0 | y: <Uint32> 0 }
+  | color: <Color> { r: <Uint8> 255 | g: <Uint8> 255 | b: <Uint8> 255 },
   <Pixel>
-  | point: <Point> { x: <UInt32> 5 | y: <UInt32> 5 }
-  | color: <Color> { r: <UInt8> 255 | g: <UInt8> 0 | b: <UInt8> 0 },
+  | point: <Point> { x: <Uint32> 5 | y: <Uint32> 5 }
+  | color: <Color> { r: <Uint8> 255 | g: <Uint8> 0 | b: <Uint8> 0 },
   <Pixel>
-  | point: <Point> { x: <UInt32> 10 | y: <UInt32> 0 }
-  | color: <Color> { r: <UInt8> 0 | g: <UInt8> 0 | b: <UInt8> 128 } ]
+  | point: <Point> { x: <Uint32> 10 | y: <Uint32> 0 }
+  | color: <Color> { r: <Uint8> 0 | g: <Uint8> 0 | b: <Uint8> 128 } ]
 
 tri.reify()
 //-->
@@ -165,13 +165,13 @@ When defining a type, the `name` is optional but it allows you to reference the 
 
 The base export function `reified` is a shortcut for all of these constructors.
 
-* `reified('UInt8')` - returns the _‹Type›_ that matches the name
-* `reified('UInt8[10]')` - returns an _‹ArrayT›_ for the specified type and size
-* `reified('UInt8[10][10][10]')` - arrays can be nested arbitrarily
-* `reified('Octets', 'UInt8[10]')` - A label can also be specified
+* `reified('Uint8')` - returns the _‹Type›_ that matches the name
+* `reified('Uint8[10]')` - returns an _‹ArrayT›_ for the specified type and size
+* `reified('Uint8[10][10][10]')` - arrays can be nested arbitrarily
+* `reified('Octets', 'Uint8[10]')` - A label can also be specified
 * `reified('RenameOctets', Octets)` - If the second parameter is a _‹Type›_ and there's no third parameter the type is renamed
 * `reified('OctetSet', 'Octets', 10)` - An array is created if the third parameter is a number and the second resolves to a _‹Type›_
-* `reified('RGB', { r: 'UInt8', g: 'UInt8', b: 'UInt8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
+* `reified('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
 * `reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
 * `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
 * `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
@@ -273,8 +273,8 @@ bits.reify()
 
 ## .lnk File Format
 ```javascript
-var CLSID = new ArrayType('CLSID', UInt8, 16)
-var FILETIME = new StructType('FILETIME ', { Low: UInt32, High: UInt32 })
+var CLSID = new ArrayType('CLSID', Uint8, 16)
+var FILETIME = new StructType('FILETIME ', { Low: Uint32, High: Uint32 })
 var LinkFlags = new BitfieldType('LinkFlags', ['HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath',
   'HasWorkingDir','HasArguments','HasIconLocation','IsUnicode','ForceNoLinkInfo','HasExpString','RunInSeparateProcess',
   'UNUSED1','HasDarwinID','RunAsUser','HasExpIcon','NoPidAlias','UNUSED2','RunWithShimLayer','ForceNoLinkTrack',
@@ -285,21 +285,21 @@ var FileAttributesFlags = new BitfieldType('FileAttributesFlags', ['READONLY','H
   'UNUSED2','NORMAL','TEMPORARY','SPARSE_FILE','REPARSE_POINT','COMPRESSED','OFFLINE','NOT_CONTENT_INDEXED','ENCRYPTED'
 ])
 var ShellLinkHeader = new StructType('ShellLinkHeader', {
-  HeaderSize: UInt32,
+  HeaderSize: Uint32,
   LinkCLSID:  CLSID,
   LinkFlags:  LinkFlags,
   FileAttributes: FileAttributesFlags,
   CreationTime:  FILETIME,
   AccessTime:  FILETIME,
   WriteTime:  FILETIME,
-  FileSize: UInt32,
+  FileSize: Uint32,
   IconIndex: Int32,
-  ShowCommand: UInt32
+  ShowCommand: Uint32
 });
 //-->
 ‹ShellLinkHeader›(62b)
-| HeaderSize:     ‹UInt32›
-| LinkCLSID:      ‹CLSID›(16b)[ 16 ‹UInt8› ]
+| HeaderSize:     ‹Uint32›
+| LinkCLSID:      ‹CLSID›(16b)[ 16 ‹Uint8› ]
 | LinkFlags:      ‹LinkFlags›(32bit)
   0x1           HasLinkTargetIDList
   0x2           HasLinkInfo
@@ -344,12 +344,12 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
   0x1000   OFFLINE
   0x2000   NOT_CONTENT_INDEXED
   0x4000   ENCRYPTED
-| CreationTime:   ‹FILETIME›(8b) { Low: ‹UInt32› | High: ‹UInt32› }
-| AccessTime:     ‹FILETIME›(8b) { Low: ‹UInt32› | High: ‹UInt32› }
-| WriteTime:      ‹FILETIME›(8b) { Low: ‹UInt32› | High: ‹UInt32› }
-| FileSize:       ‹UInt32›
+| CreationTime:   ‹FILETIME›(8b) { Low: ‹Uint32› | High: ‹Uint32› }
+| AccessTime:     ‹FILETIME›(8b) { Low: ‹Uint32› | High: ‹Uint32› }
+| WriteTime:      ‹FILETIME›(8b) { Low: ‹Uint32› | High: ‹Uint32› }
+| FileSize:       ‹Uint32›
 | IconIndex:      ‹Int32›
-| ShowCommand:    ‹UInt32›
+| ShowCommand:    ‹Uint32›
 ```
 
 ## TODO
