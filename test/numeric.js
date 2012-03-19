@@ -6,7 +6,7 @@ var Int8;
 
 test('load', function(t){
   t.ok(numeric = require('../lib/numeric'), 'numerics loaded');
-  t.equal(Object.keys(numeric).sort()+'', 'Double,Float,Int16,Int32,Int8,UInt16,UInt32,UInt8', 'numerics has all expected names');
+  t.equal(Object.keys(numeric).sort()+'', 'Double,Float,Int16,Int32,Int64,Int8,UInt16,UInt32,UInt64,UInt8', 'numerics has all expected names');
   t.end();
 });
 
@@ -24,7 +24,8 @@ test('constructor properties', function(t){
 test('prototype properties', function(t){
   t.equal(Int8.bytes, Int8.prototype.bytes, 'prototype bytes match constructor bytes');
   t.equal(Int8.prototype.__proto__, numeric.prototype.prototype, 'prototype inherits from numeric.prototype.prototype');
-  t.equal(Int8.prototype.DataType, 'Int8', 'DataType is "Int8"');
+  t.equal(Int8.prototype.DataType, 'numeric', 'DataType is correct');
+  t.equal(Int8.prototype.Subtype, 'Int8', 'Subtype is correct');
   t.equal(Int8.prototype+'', '[object Data]', 'toString shows class "Data"');
   t.end();
 });
