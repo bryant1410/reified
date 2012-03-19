@@ -1,20 +1,48 @@
 var ViewBuffer = require('./lib/buffer');
 var lookupType = require('./lib/genesis').lookupType;
+var registerType = require('./lib/genesis').registerType;
 
-module.exports = createData;
+module.exports = reified;
 
-function createData(type, buffer, offset, values){
+function reified(type, subject, size, values){
   type = lookupType(type);
+  if (reified.prototype.isPrototypeOf(this)) {
+    return new type(subject, size, values);
+  } else {
+    subject = lookupType(subject, type);
+    if (!subject) {
+      if (typeof type === 'string') {
+        throw new TypeError('Subject is required when type not found');
+      } else {
+        return type;
+      }
+    }
+    if (typeof type === 'string' && subject.Class === 'Type') {
+      return subject.rename(type);
+    }
+    if (typeof subject === 'string' || subject.Class === 'Type') {
+      return new reified.Array(type, subject, size);
+    } else if (Array.isArray(subject) || typeof subject === 'number' || size) {
+      return new reified.Bitfield(type, subject, size);
+    } else {
+      return new reified.Struct(type, subject);
+    }
+  }
+}
+
+reified.data = function data(type, buffer, offset, values){
+  type = lookupType(type);
+  if (typeof type === 'string') throw new TypeError('Type not found "'+type+'"');
   return new type(buffer, offset, values);
 }
 
-createData.Numeric = require('./lib/numeric');
-createData.Struct = require('./lib/struct');
-createData.Array = require('./lib/array');
-createData.Bitfield = require('./lib/bitfield');
-createData.ViewBuffer = ViewBuffer;
+reified.Numeric = require('./lib/numeric');
+reified.Struct = require('./lib/struct');
+reified.Array = require('./lib/array');
+reified.Bitfield = require('./lib/bitfield');
+reified.ViewBuffer = ViewBuffer;
 
-Object.defineProperty(createData, 'defaultEndian', {
+Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
   configurable: true,
   get: function(){

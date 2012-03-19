@@ -3,11 +3,11 @@ require('../lib/utility').MAKE_ALL_ENUMERABLE();
 
 //delete Buffer.prototype.inspect;
 
-var reify = require('../')
-var Numerics = reify.Numeric;
-var ArrayType = reify.Array;
-var StructType = reify.Struct;
-var BitfieldType = reify.Bitfield;
+var reified = require('../')
+var Numerics = reified.Numeric;
+var ArrayType = reified.Array;
+var StructType = reified.Struct;
+var BitfieldType = reified.Bitfield;
 
 // local scope ahoy
 for (var k in Numerics) eval('var '+k+' = Numerics.'+k);
@@ -47,9 +47,9 @@ function section(label, codeArray){
 
 
 section("NumericType", [
-  [ "Instances", [ "var int32 = new UInt32(10000000)",
-                   "var int16 = new UInt16(int32)",
-                   "var int8 = new UInt8(int16)" ] ],
+  [ "Instances", [ "var int32 = new reified('UInt32', 10000000)",
+                   "var int16 = new reified('UInt16', int32)",
+                   "var int8 = new reified('UInt8', int16)" ] ],
   [ "Shared Data", [ "int8.write(100)",
                      "int32",
                      "int16",
@@ -57,32 +57,30 @@ section("NumericType", [
 ]);
 
 section("ArrayType", [
-  [ "Simple", [ "var RGBarray = new ArrayType('RGB', UInt8, 3)",
+  [ "Simple", [ "var RGBarray = reified('RGBarray', 'UInt8[3]')",
                 "new RGBarray([0, 150, 255])" ] ],
-  [ "Multidimension", [ "var int32x4 = new ArrayType(Int32, 4)",
-                        "var int32x4x4 = new ArrayType(int32x4, 4)",
-                        "var int32x4x4x2 = new ArrayType(int32x4x4, 2)",
+  [ "Multidimension", [ "var int32x4x4x2 = reified('Int32[4][4][2]')",
                         "var inst = new int32x4x4x2",
                         "inst.reify()"] ]
 ]);
 
 section("StructType", [
-  [ "Simple", [ "var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })",
+  [ "Simple", [ "var RGB = reified('RGB', { r: 'UInt8', g: 'UInt8', b: 'UInt8' })",
                 "var fuschia = new RGB({ r: 255, g: 0, b: 255 })",
-                "var deepSkyBlue = new RGB({ r: 0, g: 150, b: 255 })" ] ],
-  [ "Nested", [ "var Border = new StructType('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })",
+                "var deepSkyBlue = new reified('RGB', { r: 0, g: 150, b: 255 })" ] ],
+  [ "Nested", [ "var Border = reified('Border', { top: RGB, right: RGB, bottom: RGB, left: RGB })",
                 "new Border({ top: fuschia, right: deepSkyBlue, bottom: fuschia, left: deepSkyBlue })" ] ],
 ]);
 
 
 section("Bitfield", [
-  [ "Indexed", [ "var bitfield = new BitfieldType(2)",
+  [ "Indexed", [ "var bitfield = reified('bits', 2)",
                  "var bits = new bitfield",
                  "bits.write(0); bits",
                  "bits[12] = true; bits[1] = true; bits;",
                  "bits.read()",
                  "bits.reify()" ] ],
-  [ "Flags",   [ "var Desc = new BitfieldType('DescriptorFlags', "+
+  [ "Flags",   [ "var Desc = reified('DescriptorFlags', "+
                  "['ENUMERABLE','CONFIGURABLE','WRITABLE'])",
                  "inst = new Desc",
                  "inst.ENUMERABLE = true; inst",
@@ -115,10 +113,10 @@ section("Cominations", [
                           "  ShowCommand: UInt32",
                           "});"].join('\n'),
                           "new ShellLinkHeader"]],
-  [ "Graphics",   [ "var Point = new StructType('Point', { x: UInt32, y: UInt32 });",
-                    "var Color = new StructType('Color', { r: UInt8, g: UInt8, b: UInt8 });",
-                    "var Pixel = new StructType('Pixel', { point: Point, color: Color });",
-                    "var Triangle = new ArrayType('Triangle', Pixel, 3);",
+  [ "Graphics",   [ "var Point = reified('Point', { x: UInt32, y: UInt32 });",
+                    "var Color = reified('Color', { r: UInt8, g: UInt8, b: UInt8 });",
+                    "var Pixel = reified('Pixel', { point: Point, color: Color });",
+                    "var Triangle = reified('Triangle', Pixel[3]);",
                     "var white = new Color({ r: 255, g: 255, b: 255 });",
                     "var red = new Color({ r: 255, g: 0, b: 0 });",
                     "var origin = new Point({ x: 0, y: 0 });",

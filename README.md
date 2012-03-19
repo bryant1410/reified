@@ -15,9 +15,10 @@ The following examples use reified's option to automatically allocate a buffer d
 Float, Double, Int8, UInt8, Int16, UInt16, Int32, UInt32, Int64, UInt64
 
 ```javascript
-var int32 = new UInt32(10000000) <UInt32> 10000000
-var int16 = new UInt16(int32)    <UInt16> 38528
-var int8 = new UInt8(int16)      <UInt8>  128
+var reified = require('reified');
+var int32 = reified('UInt32', 10000000) <UInt32> 10000000
+var int16 = reified('UInt16', int32)    <UInt16> 38528
+var int8 = reified('UInt8', int16)      <UInt8>  128
 
 int8.write(100)
 <UInt32> 9999972
@@ -29,9 +30,7 @@ int8.write(100)
 A constructor constructor for array types. These are containers for multiples values that are of the same type. The member type can be any type, simple or complex.
 
 ```javascript
-var int32x4 = new ArrayType(Int32, 4)
-var int32x4x4 = new ArrayType(int32x4, 4)
-var int32x4x4x2 = new ArrayType(int32x4x4, 2)
+var int32x4x4x2 = reified('Int32[4][4][2]')
 //-->
 ‹Int32x4x4x2›(128b)[ 2 ‹Int32x4x4›(64b)[ 4 ‹Int32x4›(16b)[ 4 ‹Int32› ] ] ]
 
@@ -59,23 +58,21 @@ array.reify()
 A constructor constructor that is used to build Struct constructors. These can be complex data structures that contain multiple levels of smaller structs and simple data types.
 
 ```javascript
-var Point = new StructType('Point', { x: 'UInt32', y: 'UInt32' });
-var RGB = new StructType('RGB', { r: UInt8, g: UInt8, b: UInt8 })
-var Pixel = new StructType('Pixel', { point: Point, color: RGB })
+var Point = reified('Point', { x: UInt32, y: UInt32 });
+var Color = reified('Color', { r: 'UInt8', g: 'UInt8', b: 'UInt8' })
+var Pixel = reified('Pixel', { point: Point, color: Color });
 
-var Triangle = new ArrayType('Triangle', Pixel, 3)
+var Triangle = reified('Triangle', Pixel[3]);
 //-->
 ‹Triangle›(33b)
 [ 3 ‹Pixel›(11b)
   | point: ‹Point›(8b) { x: ‹UInt32› | y: ‹UInt32› }
   | color: ‹RGB›(3b) { r: ‹UInt8› | g: ‹UInt8› | b: ‹UInt8› } ]
 
-
-var origin = Pixel({ point: Point({ x: 0, y: 0 }), color: Color({ r: 255, g: 255, b: 255 }) });
 var tri = new Triangle([
-  origin,
-  { point: { x:  5, y: 5 }, color: { r: 255, g: 0, b: 0 } },
-  { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } }
+  { point: { x:  0, y: 0 }, color: { r: 255, g: 255, b: 255 } },
+  { point: { x:  5, y: 5 }, color: { r: 255, g:   0, b:   0 } },
+  { point: { x: 10, y: 0 }, color: { r: 0,   g:   0, b: 128 } }
 ])
 
 //-->
@@ -100,7 +97,7 @@ tri.reify()
 A constructor constructor to create bitfields which seamlessly map between bits and a set of flags.
 
 ```javascript
-var DescriptorFlags = new BitfieldType('DescriptorFlags', {
+var DescriptorFlags = reified('DescriptorFlags', {
   ENUMERABLE   : 1,
   CONFIGURABLE : 2,
   READONLY     : 3,
@@ -108,7 +105,7 @@ var DescriptorFlags = new BitfieldType('DescriptorFlags', {
   FROZEN       : 5,
   HIDDEN       : 6,
   NOTPRIVATE   : 7,
-});
+}, 1);
 
 ‹DescriptorFlags›(8bit)
   0x1   ENUMERABLE
@@ -145,12 +142,27 @@ A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.p
 
 ###Defining a ‹Type›
 
-Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_. When defining a type, the `name` is optional but it allows you to debug and format inspection output better and allows you to specify the type later using the name instead of the _‹StructT›_ itself, such as 'UInt8' in `new ArrayType('RGB', 'UInt8', 3)`.
+Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_.
+
+When defining a type, the `name` is optional but it allows you to reference the type by name either using the foundation export `createData` function or when defining new types. It also helps format inspection output better and is used in debug output.
 
 * `new StructType(name, definition)` - Definition is an object with the desired structure, where the keys will be the fieldnames and the values are either _‹StructT›_ instances or their names.
 * `new ArrayType(name, memberType, count)` - memberType is the _‹Type›_ to be used for members, count is the preset length for each instance of `<Array>`.
 * `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multiple bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
 * `new NumericType(name, bytes)` - currently an internal API, used to initialize the preset numeric types
+
+The base export function `reified` is a shortcut for all of these functions.
+
+* `reified('UInt8')` - returns the _‹Type›_ that matches the name
+* `reified('UInt8[10]')` - returns an _‹ArrayT›_ for the specified type and size
+* `reified('UInt8[10][10][10]')` - arrays can be nested arbitrarily
+* `reified('Octets', 'UInt8[10]')` - A label can also be specified
+* `reified('RenameOctets', Octets)` - If the second parameter is a _‹Type›_ and there's no third parameter the type is renamed
+* `reified('OctetSet', 'Octets', 10)` - An array is created if the third parameter is a number and the second resolves to a _‹Type›_
+* `reified('RGB', { r: 'UInt8', g: 'UInt8', b: 'UInt8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
+* `reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
+* `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
+* `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
 
 ###‹Type› as constructor
 
@@ -159,12 +171,15 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 
 * `new ‹Type›(buffer, offset, value)` - instance using buffer, at `offset || 0`, optionally initialized with value.
 * `new ‹Type›(value)` - allocates new buffer initialized with value
+* `new reified('TypeName', buffer, offset, value)` - a shortcut for the above (`new` required)
+* `reified.data('TypeName', buffer, offset, value)` - also a shortcut for the above
 
 ###‹Type› static functions and properties
 
 * `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the ‹Type›. There's also a version of this on each top level Type, `ArrayType.isInstance(o)`
 * `‹Type›.bytes`         - byteSize of an instance of the Type
 * `‹Type›.array(n)`      - create a new ‹ArrayT› from ‹Type› with _n_ size
+* `‹Type›[1..20]`        - shortcut for `‹Type›.array(n)` for __n__'s up to 20
 * `‹StructT›.fields`     - frozen structure reference with fieldName --> Data that constructs it
 * `‹StructT›.names`      - array of field names
 * `‹StructT›.offsets`    - bytes offsets for each member
