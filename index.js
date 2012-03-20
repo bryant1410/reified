@@ -12,6 +12,10 @@ var BitfieldType = require('./lib/bitfield');
 module.exports = reified;
 
 function reified(type, subject, size, values){
+  if (arguments.length === 1 && type.Class === 'Data') {
+    return Object.getPrototypeOf(Object.getPrototypeOf(type)).reify.call(type);
+  }
+
   type = genesis.lookupType(type);
   if (reified.prototype.isPrototypeOf(this)) {
     return new type(subject, size, values);
@@ -42,10 +46,16 @@ reified.data = function data(type, buffer, offset, values){
   if (typeof type === 'string') throw new TypeError('Type not found "'+type+'"');
   return new type(buffer, offset, values);
 }
+reified.reify = function reify(data){
+  return Object.getPrototypeOf(data).reify.call(data);
+}
+
+
 reified.isType = function isType(o){ return genesis.Type.isPrototypeOf(o) }
 reified.isData = function isData(o){ return genesis.Type.prototype.isPrototypeOf(o) }
 
 Object.defineProperties(reified, {
+  Type:          D._CW(genesis.Type),
   NumericType:   D._CW(NumericType),
   StructType:    D._CW(StructType),
   ArrayType:     D._CW(ArrayType),
