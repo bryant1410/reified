@@ -11,6 +11,7 @@ module.exports = Font;
 
 
 var reified = require('reified');
+var Buffer = reified.Buffer;
 reified.defaultEndian = 'BE';
 var Int8 = reified.NumericType.Int8;
 var Uint8 = reified.NumericType.Uint8;
@@ -27,12 +28,14 @@ function inspect(o){ console.log(require('util').inspect(o, false, 6)) }
 
 
 function Font(buffer, filename){
+  buffer = new Buffer(buffer);
   this.filename = filename;
   this.name = filename.slice(0, -path.extname(filename).length);
 
   // FontIndex is the entry point
   this.index = new FontIndex(buffer);
   inspect(this.index.reify());
+  inspect(this.index.constructor);
 }
 
 Font.fontFolder = ({
@@ -122,6 +125,7 @@ Table.prototype.on('reify', function(){
 })
 
 
+
 // ####################################################################################
 // ### The TableIndex is an array of Tables that have some basic info and a pointer ###
 // ####################################################################################
@@ -140,6 +144,7 @@ function Index(tableCount, fontIndex){
 
   fontIndex.constructor.names.push('tables');
   fontIndex.constructor.offsets.tables = fontIndex.bytes;
+  fontIndex.constructor.fields.tables = TableIndex;
   fontIndex.tables = new TableIndex(fontIndex.buffer, fontIndex.bytes);
   fontIndex.bytes = fontIndex.constructor.bytes = fontIndex.bytes + fontIndex.tables.bytes;
 }
@@ -240,7 +245,6 @@ OS2.prototype.on('reify', function(val){
 
 
 
-
 // TODO Head, name indexes, etc.
 
 var Version = reified('Version', 'Uint8[4]');
@@ -277,7 +281,6 @@ var NameRecord = reified('NameRecord', {
   length     : Uint16,
   byteOffset : Uint16,
 });
-
 
 //console.log(Font.listFonts());
 Font.load('DejaVuSansMono.ttf');

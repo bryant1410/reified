@@ -1,6 +1,6 @@
 var genesis      = require('./lib/genesis');
 var D            = require('./lib/utility').desc;
-var BuffBuffer   = require('./lib/buffer').BuffBuffer;
+var Buffer       = require('./lib/buffer').Buffer;
 var NumericType  = require('./lib/numeric');
 var StructType   = require('./lib/struct');
 var ArrayType    = require('./lib/array');
@@ -12,9 +12,6 @@ var BitfieldType = require('./lib/bitfield');
 module.exports = reified;
 
 function reified(type, subject, size, values){
-  if (arguments.length === 1 && type.Class === 'Data') {
-    return Object.getPrototypeOf(Object.getPrototypeOf(type)).reify.call(type);
-  }
 
   type = genesis.lookupType(type);
   if (reified.prototype.isPrototypeOf(this)) {
@@ -60,17 +57,17 @@ Object.defineProperties(reified, {
   StructType:    D._CW(StructType),
   ArrayType:     D._CW(ArrayType),
   BitfieldType:  D._CW(BitfieldType),
-  BuffBuffer:    D._CW(BuffBuffer),
+  Buffer:        D._CW(Buffer),
 })
 
 Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
   configurable: true,
   get: function(){
-  	return BuffBuffer.prototype.endianness;
+  	return Buffer.prototype.endianness;
   },
   set: function(v){
   	if (v !== 'LE' && v !== 'BE') throw new Error('Endianness must be "BE" or "LE"');
-  	BuffBuffer.prototype.endianness = v;
+  	Buffer.prototype.endianness = v;
   }
 });
