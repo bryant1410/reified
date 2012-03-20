@@ -202,31 +202,36 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 * `‹BitfieldT›.flags` - object containing flag names and the value they map to
 
 
-## `<Data>` methods and properties
+# `<Data>` 
 
-`<Data>` instances are constructed by _‹Type›_'s. They are the interface that directly maps to memory and modifies it. Fields and indices in `<Array>`'s and `<Struct>`'s are lazily initialized. That is they will be created when something accesses the field. This poses no issue for accessing the field but it means the fields will be somewhat unpredictably defined or not defined on any given `<Data>` instance at any given time
 
-Currently these interfaces aren't deallocated once allocated, so something that walks the whole structure, like `<Data>.reify()` will initialize all the fields recursively. The future functioning of how these fields work is still under consideration for achieving the goal of balanced performance and memory usage.
+`<Data>` instances are constructed by _‹Type›_'s. They are the interface that directly maps to memory and modifies it. Fields and indices in `<Array>`'s and `<Struct>`'s are lazily initialized. That is they will be created when something accesses the field. This poses no issue for accessing the field but it means the fields will be somewhat unpredictably defined or not defined on any given `<Data>` instance at any given time.
 
-## Common
+Something that walks the whole structure, like `<Data>.reify()` will initialize all the fields recursively. As such `<Data>.reify([deallocate])` can optionally deallocate immediately after reifying the data to JavaScript. What this means is that the `<Data>` structures in place, besides the top level, will be removed from memory. They will be reallocated as soon as you access an index or field, just like they initially were, so it isn't consequential from a usage standpoint. It's more important in terms of performance vs. memory usage and how a specific type of data will be accessed. Rarely accessed or one shot reads should always be deallocated, whereas something constantly being accessed shouldn't be.
+
+Deallocating will always leave the top level container intact so you can always reinitialize arbitrarily. Delete the top level is up to you. There's three primary methods of deallocating: `<Data>.reify(true)` will deallocate in the process if creating JavaScript values since this is a natural point where the data isn't needed anymore. `<Data>.realign(true)` also provides for deallocating in the same manner as often most of the structures need to be partially or fully reinitialized anyway. Finally you setting an index or field accessor to null will cause it to deallocate itself.
+
+## methods and properties
+
+### Common
 
 * `<Data>.bytes` - same as ‹Type›.bytes
 * `<Data>.DataType` - number type name or 'array' or 'struct' or 'bitfield'
 * `<Data>.write(value)` - primarily for setting the value of the whole thing at once depending on type
-* `<Data>.reify()` - recursively convert to JavaScript objects/values
+* `<Data>.reify([deallocate])` - recursively convert to JavaScript objects/values. If deallocate is true then all but the top level structure will be deallocated after reification.
 * `<Data>.fill([value])` - fills each distinct area of the type with value or 0. (array indices, struct members, same as write for number)
 * `<Data>.rebase([buffer])` - switch to another buffer or allocates a new buffer
-* `<Data>.realign(offset)` - changes the offset on the current buffer
+* `<Data>.realign(offset, [deallocate])` - changes the offset on the current buffer. Optionally deallocate non-top level structures as well.
 * `<Data>.clone()` - create a copy of `<Data>` pointing to the same buffer and offset
 * `<Data>.copy([buffer], [offset])` - create a copy of `<Data>` pointing to the provided buffer and offset or new buffer and 0, copying buffer data byte for byte
 * `<Data> accessor [get]` - returns the `<Data>` instance for that field, not the reified value. To get the value: `instance[indexOrField].reify()`
-* `<Data> accessor [set]` - sets the value, mapping the structure in terms of arrays and objects to indices and fields.
+* `<Data> accessor [set]` - sets the value, mapping the structure in terms of arrays and objects to indices and fields. If the value is `null` then the `<Data>` structure will be deallocated.
 
-## Struct
+### Struct
 
 * `<Struct>.fieldName` - field based accessors
 
-## Array
+### Array
 
 * `<Array>.write(value, [index], [offset])` - optionally start from given array index on the type, with optional offset as the starting index for reading from the source
 * `<Array>[0...length]` - index based accessor
@@ -234,7 +239,7 @@ Currently these interfaces aren't deallocated once allocated, so something that 
 * `<Array>.forEach` - Array.prototype.forEach
 * `<Array>.reduce` - Array.prototype.reduce
 
-## Bitfield
+### Bitfield
 
 * `<Bitfield>.write(value)` - writes the underlying data as a single number
 * `<Bitfield>.read()` - reads the underlying data as a single number
@@ -274,8 +279,13 @@ reified.Type.prototype.on('reify', function(){
 reified.Type.prototype.on('construct', function(){
   console.log(this.constructor.name + ' constructed');
 });
+reified.Type.prototype.on('deallocate', function(){
+  console.log(this.constructor.name + ' deallocated');
+});
 ```
 Which would emit those events for __every single type__.
+
+
 
 # More Example Usage
 
