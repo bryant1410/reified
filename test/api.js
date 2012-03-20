@@ -1,12 +1,12 @@
 var tap = require("tap");
 var test = tap.test;
-var BuffBuffer = require('../lib/buffer').BuffBuffer;
+var Buffer = require('../lib/buffer').Buffer;
 var reified;
 
 test('load', function(t){
   t.ok(reified = require('../'), 'reified loaded');
   t.similar(Object.keys(reified).sort(), ['data','defaultEndian','isData','isType'], 'reified has all expected enumerable names');
-  t.similar(Object.getOwnPropertyNames(reified).sort(), ['ArrayType','BitfieldType','BuffBuffer','NumericType','StructType','arguments','caller','data','defaultEndian','isData','isType','length','name','prototype'], 'reified has all expected names');
+  t.similar(Object.getOwnPropertyNames(reified).sort(), ['ArrayType','BitfieldType','Buffer','NumericType','StructType','Type', 'arguments','caller','data','defaultEndian','isData','isType','length','name','prototype'], 'reified has all expected names');
   t.end();
 });
 
@@ -31,13 +31,13 @@ test('reified as Data constructor', function(t){
   var int32 = new reified('Int32', 10000);
   t.equal(reified('Int32'), int32.constructor, 'using new produces constructs Data');
   t.equal(int32.reify(), 10000, 'passes value to real constructor');
-  t.similar(new reified('Int32[2][2]').reify(), [[0,0],[0,0]], 'string constructs multidimensional arrays');
-  t.similar(new reified(Int32[2][2]).reify(), [[0,0],[0,0]], 'types constructs multidimensional arrays');
+  t.similar((new reified('Int32[2][2]')).reify(), [[0,0],[0,0]], 'string constructs multidimensional arrays');
+  t.similar((new reified(Int32[2][2])).reify(), [[0,0],[0,0]], 'types constructs multidimensional arrays');
   t.similar(new reified(Int32[2][2], [[1,2],[3,4]]).reify(), [[1,2],[3,4]], 'multidimensional init values are passed');
   function OCT(n){ return [n,0,0,0] }
   var flatten = Function.call.bind([].concat, []);
-  var buff = new BuffBuffer(flatten(OCT(1), OCT(2), OCT(3), OCT(4)));
-  t.similar(new reified(Int32[2][2], buff).reify(), [[1,2],[3,4]], 'Provided buffer reifies correctly');
+  var buff = new Buffer(flatten(OCT(1), OCT(2), OCT(3), OCT(4)));
+  t.similar((new reified(Int32[2][2], buff)).reify(), [[1,2],[3,4]], 'Provided buffer reifies correctly');
   t.end();
 });
 

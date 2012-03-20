@@ -6,6 +6,8 @@ StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow 
 npm install reified
 ```
 
+It's currently set up for node but I'm ALMOST done making it browser ready. Just need to clean up dependencies, but the underlying data abstractions are complete and working just fine.
+
 # Overview
 All of the following APIs are used in conjunction with Buffers. The purpose is to seamlessly give JavaScript mapping to an underlying set of bytes. Multiple different reified structures can point to the same underlying data. It's the same concept as DataView, except much more awesome.
 

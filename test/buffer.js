@@ -13,6 +13,8 @@ test('initialize', function(t){
   t.ok(DataBuffer = require('../lib/buffer').DataBuffer, 'DataBuffer loaded');
   t.ok(buffB = new BuffBuffer(b), 'new BuffBuffer(b)');
   t.ok(dataB = new DataBuffer(b), 'new DataBuffer(b)');
+  console.log(buffB);
+  console.log(dataB);
   t.equal(buffB+'', dataB+'', 'toString is '+dataB);
   t.end();
 });
