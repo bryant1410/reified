@@ -190,13 +190,13 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 
 ## ‹Type› static functions and properties
 
-* `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the _‹Type›_. This also works on each top level Type, `ArrayType.isInstance(o)`, and even `Type.istance(o)` if it's `<Data>` of any kind
+* `‹Type›.isInstance(o)` - checks if a given `<Data>` is an instance of the _‹Type›_. This also works on each top level Type, `ArrayType.isInstance(o)`, and even `Type.isInstance(o)` to check if it's `<Data>` of any kind
 * `‹Type›.bytes` - byteSize of an instance of the Type
 * `‹Type›.array(n)` - create a new ‹ArrayT› from ‹Type› with _n_ size
-* `‹Type›[1..20]` - shortcut for `‹Type›.array(n)` for __n__'s up to 20
-* `‹StructT›.fields` - frozen structure reference with fieldName --> Data that constructs it
+* `‹Type›[1..20]` - shortcut for `‹Type›.array(n)` for __n__'s up to 20. `‹Type›[n][n][n]` will produce arbitrarily nested _‹ArrayT›_'s.
+* `‹StructT›.fields` - structure reference with fieldName --> _‹Type›_ that constructs it
 * `‹StructT›.names`  - array of field names
-* `‹StructT›.offsets` - bytes offsets for each member
+* `‹StructT›.offsets` - byte offsets for each member
 * `‹ArrayT›.memberType` - the _‹Type›_ the array is made of
 * `‹ArrayT›.count` - length for instances of `<Array>`.
 * `‹BitfieldT›.flags` - object containing flag names and the value they map to
@@ -204,7 +204,9 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 
 ## `<Data>` methods and properties
 
-`<Data>` instances are constructed by `‹Type›`'s. They are the interface that directly maps to memory and modifies it.
+`<Data>` instances are constructed by _‹Type›_'s. They are the interface that directly maps to memory and modifies it. Fields and indices in `<Array>`'s and `<Struct>`'s are lazily initialized. That is they will be created when something accesses the field. This poses no issue for accessing the field but it means the fields will be somewhat unpredictably defined or not defined on any given `<Data>` instance at any given time
+
+Currently these interfaces aren't deallocated once allocated, so something that walks the whole structure, like `<Data>.reify()` will initialize all the fields recursively. The future functioning of how these fields work is still under consideration for achieving the goal of balanced performance and memory usage.
 
 ## Common
 
@@ -245,6 +247,35 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 * `<Bitfield>.forEach` - Array.prototype.forEach
 * `<Bitfield>.reduce` - Array.prototype.reduce
 * `<Bitfield>.toString` - String of the bits in 1's and 0's
+
+
+# Experimental EventEmitter API
+
+Currently a minimal event emitter API is implemented. It is still up for decision whether it will stay or not, based on performance impact and actual usefulness. Currently it's implemented with the goal are providing hooks into key processes, allowing modification of values. The example usage is when a field needs special treatment during reification, some special mapping to values not easily represented in reify's api. The following is from the TTF font format example:
+
+```javascript
+var TTFVersion = reified('TTFVersion', Uint8[4]);
+
+TTFVersion.prototype.on('reify', function(val){
+  val = val.join('');
+  this.reified = val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
+});
+```
+Before the event is emitted, the reified value is attached to the structure, such that it's possible to fully modify it just prior to it's finally returned. This allows arbitrary modification. The TTF example also uses it currently as a kind of jury rigged way to handle pointers/indirection, by forcibly reifying related but separate-in-memory values.
+
+The other event exposed is `<Data>.on('construct')`. This allows a similar connection of values where reified's api is lacking, like dynamically sized arrays based on a value read from memory. Ultimately a better API will be provided but some of these problems, but itshows there's real potential value in having these taps.
+
+The emitter is attached on the primordial `Data` itself which allows the following:
+
+```javascript
+reified.Type.prototype.on('reify', function(){
+  console.log(this.constructor.name + ' reified');
+});
+reified.Type.prototype.on('construct', function(){
+  console.log(this.constructor.name + ' constructed');
+});
+```
+Which would emit those events for __every single type__.
 
 # More Example Usage
 
@@ -361,7 +392,7 @@ var ShellLinkHeader = new StructType('ShellLinkHeader', {
 * An optional extended JS interface implementing Harmony Proxies to smooth over the rough edges and make usage easier.
 * Dynamic mapping of structures that use indirection, for example the TTF font file format with header tables and pointer rich structures.
 * String handling and the dynamic sizing that goes along with that.
-* Make it work in browsers with ArrayBuffers and DataView. This can probably be done with a modified ViewBuffer built on top of DataView/ArrayBuffer instead of node's Buffer, along with some tweaks to incompatible code.
+* Finish up the browser version, which is almost complete.
 * After making it work with DataViews, find more optimization points. Many of these will likely be engine specific.
 
 
