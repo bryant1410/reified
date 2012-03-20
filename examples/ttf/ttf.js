@@ -44,8 +44,11 @@ function Font(buffer, filename){
 
   // FontIndex is the entry point
   this.index = new FontIndex(buffer);
-  inspect(this.index.constructor);
-  inspect(this.index.reify());
+  //inspect(this.index.constructor);
+  inspect(this.index)
+  var reified = this.index.reify(true);
+  //inspect();
+  inspect(this.index.reify())
 }
 
 Font.fontFolder = ({
