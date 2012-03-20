@@ -972,6 +972,9 @@ exporter(reified);
 // ###             EventEmitter2            ###
 // ############################################
 
+
+
+
 }(Function('return this')(),
 function(item, name){
   if (typeof module === 'undefined') {
@@ -981,6 +984,12 @@ function(item, name){
   }
   return item;
 }, function(undefined) {
+
+// (The MIT License)
+// Copyright (c) 2011 hij1nx http://www.twitter.com/hij1nx
+// See either the included license file for the full text or one the following
+//  https://github.com/Benvie/reified
+//   https://github.com/hij1nx/EventEmitter2
 
   var isArray = Array.isArray ? Array.isArray : function _isArray(obj) {
     return Object.prototype.toString.call(obj) === "[object Array]";
