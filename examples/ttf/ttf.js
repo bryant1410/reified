@@ -9,17 +9,27 @@ var labels = require('./labels');
 
 module.exports = Font;
 
+// There's essentially type styles of usage. One which is more declarative like this
+// One where everything uses the `reified` function magic. It's mostly a matter of style.
 
-var reified = require('reified');
-var Buffer = reified.Buffer;
+var reified   = require('reified'),
+    Buffer    = reified.Buffer,
+    BitfieldT = reified.BitfieldType,
+    StructT   = reified.StructType,
+    ArrayT    = reified.ArrayType,
+    NumT      = reified.NumericType,
+    Int8      = NumT.Int8,
+    Int16     = NumT.Int16,
+    Int32     = NumT.Int32,
+    Int64     = NumT.Int64,
+    Uint8     = NumT.Uint8,
+    Uint16    = NumT.Uint16,
+    Uint32    = NumT.Uint32,
+    Uint64    = NumT.Uint64,
+    Float32   = NumT.Float32,
+    Float64   = NumT.Float64;
+
 reified.defaultEndian = 'BE';
-var Int8 = reified.NumericType.Int8;
-var Uint8 = reified.NumericType.Uint8;
-var Int16 = reified.NumericType.Int16;
-var Uint16 = reified.NumericType.Uint16;
-var Int32 = reified.NumericType.Int32;
-var Uint32 = reified.NumericType.Uint32;
-
 
 var flatten = Function.apply.bind([].concat, []);
 function inspect(o){ console.log(require('util').inspect(o, false, 6)) }
@@ -34,17 +44,18 @@ function Font(buffer, filename){
 
   // FontIndex is the entry point
   this.index = new FontIndex(buffer);
-  inspect(this.index.reify());
   inspect(this.index.constructor);
+  inspect(this.index.reify());
 }
 
 Font.fontFolder = ({
   win32:  '/Windows/fonts',
   darwin: '/Library/Fonts',
-  linux: '/usr/share/fonts/truetype'
+  linux:  '/usr/share/fonts/truetype'
 }[process.platform]);
 
 Font.listFonts = function listFonts(){ return fs.readdirSync(Font.fontFolder) }
+
 Font.load = function load(filename){
   var resolved = path._makeLong(path.resolve(Font.fontFolder, filename));
   if (exists(resolved)) {
@@ -57,7 +68,7 @@ Font.load = function load(filename){
 
 
 // TTF Version
-var TTFVersion = reified('TTFVersion', Uint8[4]);
+var TTFVersion = new ArrayT('TTFVersion', Uint8, 4);
 
 // interceptor on reify that translates the value
 TTFVersion.prototype.on('reify', function(val){
@@ -70,7 +81,7 @@ TTFVersion.prototype.on('reify', function(val){
 // ### FontIndex starts the file and tells the number of Tables in the Index  ####
 // ###############################################################################
 
-var FontIndex = reified('FontIndex', {
+var FontIndex = new StructT('FontIndex', {
   version    : TTFVersion,
   tableCount : Uint16,
   range      : Uint16,
@@ -88,7 +99,7 @@ FontIndex.prototype.on('construct', function(){
 
 // A Tag is a 4 byte string label. reified needs some built in string types
 
-var Tag = reified('Tag', Uint32[1]);
+var Tag = new ArrayT('Tag', Uint8, 4);
 
 Tag.prototype.on('reify', function(val){
   this.reified = this.buffer.asciiSlice(this.offset, this.offset+this.bytes);
@@ -98,7 +109,7 @@ Tag.prototype.on('reify', function(val){
 
 
 
-var Table = reified('Table', {
+var Table = new StructT('Table', {
   tag        : Tag,
   checksum   : Uint32,
   byteOffset : Uint32,
@@ -131,7 +142,7 @@ Table.prototype.on('reify', function(){
 // ####################################################################################
 
 function Index(tableCount, fontIndex){
-  var TableIndex = reified('TableIndex', Table[tableCount]);
+  var TableIndex = new ArrayT('TableIndex', Table, tableCount);
 
   TableIndex.prototype.on('reify', function(val){
     this.reified = val.reduce(function(ret, item){
@@ -142,6 +153,7 @@ function Index(tableCount, fontIndex){
     }, {});
   });
 
+  // cludge to append on a dynamically sized array. This needs an API
   fontIndex.constructor.names.push('tables');
   fontIndex.constructor.offsets.tables = fontIndex.bytes;
   fontIndex.constructor.fields.tables = TableIndex;
@@ -158,17 +170,17 @@ function Index(tableCount, fontIndex){
 // #######################################################################
 
 Object.keys(labels.panose).forEach(function(label){
-  labels.panose[label] = reified(label, labels.panose[label], 1);
+  labels.panose[label] = new BitfieldT(label, labels.panose[label], 1);
 });
-var PANOSE = reified('PANOSE', labels.panose);
+var PANOSE = new StructT('PANOSE', labels.panose);
 
 
 // ########################################################################################
 // ### Unicode pages are 4 bitfields mapping to blocks which map to ranges, labels.json ###
 // ########################################################################################
 
-var UnicodePages = reified('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
-  ret[index] = reified('UnicodePages'+index, blocks, 4);
+var UnicodePages = new StructT('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
+  ret[index] = new BitfieldT('UnicodePages'+index, blocks, 4);
   ret[index].prototype.on('reify', function(val){
     this.reified = flatten(val.map(function(s){
       return s.split(',').map(function(ss){ return labels.unicodeRanges[ss] });
@@ -182,17 +194,17 @@ UnicodePages.prototype.on('reify', function(val){
 });
 
 
-var Point = reified('Point', {
+var Point = new StructT('Point', {
   x: Int16,
   y: Int16
 });
 
-var Metrics = reified('Metrics', {
+var Metrics = new StructT('Metrics', {
   size: Point,
   position: Point
 });
 
-var LongDateTime = reified('LongDateTime', {
+var LongDateTime = new StructT('LongDateTime', {
   lo: Uint32,
   hi: Uint32
 });
@@ -202,7 +214,7 @@ var LongDateTime = reified('LongDateTime', {
 // ### OS2 is the 'compatability' table containing a lot of useful stats and info ###
 // ##################################################################################
 
-var OS2 = reified('OS2', {
+var OS2 = new StructT('OS2', {
   version      : Uint16,
   avgCharWidth : Int16,
   weightClass  : Uint16,
@@ -210,25 +222,25 @@ var OS2 = reified('OS2', {
   typer        : Uint16,
   subscript    : Metrics,
   superscript  : Metrics,
-  strikeout    : reified('Strikeout',
+  strikeout    : new StructT('Strikeout',
   { size         : Int16,
     position     : Int16 }),
-  class        : Int8[2],
+  class        : new ArrayT('Classes', Int8, 2),
   panose       : PANOSE,
   unicodePages : UnicodePages,
   vendorID     : Tag,
   selection    : Uint16,
   firstChar    : Uint16,
   lastChar     : Uint16,
-  typographic  : reified('Typographic',
+  typographic  : new StructT('Typographic',
   { ascender     : Int16,
     descender    : Int16,
     lineGap      : Int16 }),
-  winTypograph : reified('WindowsTypographic',
+  winTypograph : new StructT('WindowsTypographic',
   { ascender     : Uint16,
     descender    : Uint16 }),
-  codePages1   : reified('CodePages1', labels.codePageNames[0], 4),
-  codePages2   : reified('CodePages2', labels.codePageNames[1], 4),
+  codePages1   : new BitfieldT('CodePages1', labels.codePageNames[0], 4),
+  codePages2   : new BitfieldT('CodePages2', labels.codePageNames[1], 4),
   xHeight      : Int16,
   capHeight    : Int16,
   defaultChar  : Uint16,
@@ -246,10 +258,10 @@ OS2.prototype.on('reify', function(val){
 
 
 // TODO Head, name indexes, etc.
+// need to address the issue with shared prototypes
+var Version = new ArrayT('Version', Uint8, 4);
 
-var Version = reified('Version', 'Uint8[4]');
-
-var Head = reified('Head', {
+var Head = new StructT('Head', {
   version          : Version,
   fontRevision     : Int32 ,
   checkSumAdj      : Uint32,
@@ -267,13 +279,13 @@ var Head = reified('Head', {
   glyphDataFormat  : Int16,
 });
 
-var NameIndex = reified('NameIndex', {
+var NameIndex = new StructT('NameIndex', {
   format     : Uint16,
   length     : Uint16,
   byteOffset : Uint16
 });
 
-var NameRecord = reified('NameRecord', {
+var NameRecord = new StructT('NameRecord', {
   platformID : Uint16,
   encodingID : Uint16,
   languageID : Uint16,
