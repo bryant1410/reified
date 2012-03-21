@@ -2,11 +2,15 @@
 
 StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow easy conversion to and from binary data.
 
+## Getting It
+
+For node, you can simply use npm to install it/
 ```
 npm install reified
 ```
 
-It's currently set up for node but I'm ALMOST done making it browser ready. Just need to clean up dependencies, but the underlying data abstractions are complete and working just fine.
+For browsers there is now a rough combined version which will be improved over time. Right now it has zero testing for compatability aside from the fact that it worked in the version of Chrome what I made it work in. At minimum it will always required a ArrayBuffers or a brave soul who will translate the underlying Buffer class to work with strings.
+
 
 # Overview
 All of the following APIs are used in conjunction with Buffers. The purpose is to seamlessly give JavaScript mapping to an underlying set of bytes. Multiple different reified structures can point to the same underlying data. It's the same concept as DataView, except much more awesome.
@@ -256,7 +260,7 @@ Deallocating will always leave the top level container intact so you can always 
 
 # Experimental EventEmitter API
 
-Currently a minimal event emitter API is implemented. It is still up for decision whether it will stay or not, based on performance impact and actual usefulness. Currently it's implemented with the goal are providing hooks into key processes, allowing modification of values. The example usage is when a field needs special treatment during reification, some special mapping to values not easily represented in reify's api. The following is from the TTF font format example:
+Currently a minimal event emitter API is implemented. It is still up for decision whether it will stay or not, based on performance impact and actual usefulness. Currently it's implemented with the goal of providing hooks into key processes, allowing modification of values. The example usage is when a field needs special treatment during reification, some special mapping to values not easily represented in reify's api. The following is from the TTF font format example:
 
 ```javascript
 var TTFVersion = reified('TTFVersion', Uint8[4]);
@@ -268,7 +272,7 @@ TTFVersion.prototype.on('reify', function(val){
 ```
 Before the event is emitted, the reified value is attached to the structure, such that it's possible to fully modify it just prior to it's finally returned. This allows arbitrary modification. The TTF example also uses it currently as a kind of jury rigged way to handle pointers/indirection, by forcibly reifying related but separate-in-memory values.
 
-The other event exposed is `<Data>.on('construct')`. This allows a similar connection of values where reified's api is lacking, like dynamically sized arrays based on a value read from memory. Ultimately a better API will be provided but some of these problems, but itshows there's real potential value in having these taps.
+The other event exposed is `<Data>.on('construct')`. This allows a similar connection of values where reified's api is lacking, like dynamically sized arrays based on a value read from memory. Ultimately a better API will be provided to solve some of these problems.However, it shows there's real potential value in having these the option to tap in.
 
 The emitter is attached on the primordial `Data` itself which allows the following:
 
