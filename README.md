@@ -12,7 +12,16 @@ npm install reified
 For browsers there is now a rough combined version which will be improved over time. Right now it has zero testing for compatability aside from the fact that it worked in the version of Chrome what I made it work in. At minimum it will always required a ArrayBuffers or a brave soul who will translate the underlying Buffer class to work with strings.
 
 # Overview
+
 All of the following APIs are used in conjunction with Buffers. The purpose is to seamlessly give JavaScript mapping to an underlying set of bytes. Multiple different reified structures can point to the same underlying data. It's the same concept as DataView, except much more awesome.
+
+## Important notes on allocation/efficiency
+
+`<Data>` instances are constructed by _‹Type›_'s. They are the interface that directly maps to memory and modifies it. Fields and indices in `<Array>`'s and `<Struct>`'s are lazily initialized. That is they will be created when something accesses the field. This poses no issue for accessing the field but it means the fields will be somewhat unpredictably defined or not defined on any given `<Data>` instance at any given time.
+
+Something that walks the whole structure, like `<Data>.reify()` will initialize all the fields recursively. As such `<Data>.reify([deallocate])` can optionally deallocate immediately after reifying the data to JavaScript. What this means is that the `<Data>` structures in place, besides the top level, will be removed from memory. They will be reallocated as soon as you access an index or field, just like they initially were, so it isn't consequential from a usage standpoint. It's more important in terms of performance vs. memory usage and how a specific type of data will be accessed. Rarely accessed or one shot reads should always be deallocated, whereas something constantly being accessed shouldn't be.
+
+Deallocating will always leave the top level container intact so you can always reinitialize arbitrarily. Delete the top level is up to you. There's three primary methods of deallocating: `<Data>.reify(true)` will deallocate in the process if creating JavaScript values since this is a natural point where the data isn't needed anymore. `<Data>.realign(true)` also provides for deallocating in the same manner as often most of the structures need to be partially or fully reinitialized anyway. Finally you setting an index or field accessor to null will cause it to deallocate itself.
 
 ## Usage
 
@@ -34,6 +43,8 @@ The base export function `reified` is a shortcut for all of these constructors.
 * `reified.isType(o)` - Is `o` a `Type` (created by one of StructType, ArrayType, BitfieldType, or NumericType).
 * `reified.isData(o)` - Is `o` an instance of a `Type`.
 * `reified.defaultEndian` getter/setter ('BE' if default, can be 'LE') Modifies the endianness of reified's internal DataBuffer.prototype.
+
+
 
 
 ## Examples
@@ -180,10 +191,6 @@ desc.read()
 At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors' prototypes like `ArrayType.prototype`. `ArrayType.protoype.__proto__` and the others share a common genesis, the top level `Type`.
 
 A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.prototype = <Data>`. `<Data>.__proto__` is one of the top level types' prototypes, `‹Type›.prototype.prototype`, like `NumericType.prototype.prototype`, referred to as `NumericData`. Finally, `NumericData.__proto__` and the others share a common genesis, the top level `Data`.
-
-## Cavaeats/Notes
-
-Currently, index and field accessors on arrays and structs are lazily created and defined. This means something like `Object.keys(<Data>)` isn't reliable. The purpose of this is so that a JavaScript representation of data isn't created until it's actually needed, otherwise simply using _reified_ would use more memory than the data it's providing a view for. This will be addressed with an optional add-on component implementing Harmony Proxies. The trade-off is that these require running Node with a special flag, or in browsers require special flags, dev versions, etc.
 
 
 # ‹Type›
