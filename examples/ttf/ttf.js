@@ -45,9 +45,11 @@ function Font(buffer, filename){
   // FontIndex is the entry point
   this.index = new FontIndex(buffer);
   //inspect(this.index.constructor);
-  inspect(this.index)
-  var reified = this.index.reify(true);
+  //inspect(this.index)
+  //var reified = this.index.reify(true);
   //inspect();
+  
+  inspect(this.index)
   inspect(this.index.reify())
 }
 
@@ -160,11 +162,34 @@ function Index(tableCount, fontIndex){
   fontIndex.constructor.names.push('tables');
   fontIndex.constructor.offsets.tables = fontIndex.bytes;
   fontIndex.constructor.fields.tables = TableIndex;
-  fontIndex.tables = new TableIndex(fontIndex.buffer, fontIndex.bytes);
-  fontIndex.bytes = fontIndex.constructor.bytes = fontIndex.bytes + fontIndex.tables.bytes;
+  fontIndex.bytes = fontIndex.constructor.bytes = fontIndex.bytes + TableIndex.bytes;
+  Object.defineProperty(fontIndex.constructor.prototype, 'tables', {
+    enumerable: true,
+    configurable: true,
+    get: function(){ return initField(this, fontIndex.constructor, 'tables') },
+    set: function(v){ initField(this, fontIndex.constructor, 'tables').write(v) }
+  });
 }
 
-
+function initField(target, ctor, field){
+  var block = new ctor.fields[field](target.buffer, target.offset + ctor.offsets[field]) ;
+  Object.defineProperty(target, field, {
+    enumerable: true,
+    configurable: true,
+    get: function(){ return block },
+    set: function(v){
+      if (v === null) {
+        this.emit('deallocate', field);
+        Object.defineProperty(this, field, {writable: true, configurable: true, value: undefined });
+        delete this[field];
+        block = null;
+      } else {
+        block.write(v);
+      }
+    }
+  });
+  return block;
+}
 
 
 
