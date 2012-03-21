@@ -22,9 +22,9 @@ Float32, Float64, Int8, Uint8, Int16, Uint16, Int32, Uint32, Int64, Uint64
 
 ```javascript
 var reified = require('reified');
-var int32 = reified('Uint32', 10000000) <Uint32> 10000000
-var int16 = reified('Uint16', int32)    <Uint16> 38528
-var int8 = reified('Uint8', int16)      <Uint8>  128
+var int32 = new reified('Uint32', 10000000) <Uint32> 10000000
+var int16 = new reified('Uint16', int32)    <Uint16> 38528
+var int8 = new reified('Uint8', int16)      <Uint8>  128
 
 int8.write(100)
 <Uint32> 9999972
