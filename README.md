@@ -227,6 +227,7 @@ Deallocating will always leave the top level container intact so you can always 
 * `<Data>.rebase([buffer])` - switch to another buffer or allocates a new buffer
 * `<Data>.realign(offset, [deallocate])` - changes the offset on the current buffer. Optionally deallocate non-top level structures as well.
 * `<Data>.clone()` - create a copy of `<Data>` pointing to the same buffer and offset
+* `<Data>.cast(‹Type›, align)` - Create a new instance of _‹Type›_'s `<Data>` pointing to the same memory. The bytes must not be larger than either the original type of the buffer itself. If type of smaller, alignment can optionally be specificied. If positive, it will be an offset, if negative it will snap to the opposite side. Otherwise they will have the same offset.
 * `<Data>.copy([buffer], [offset])` - create a copy of `<Data>` pointing to the provided buffer and offset or new buffer and 0, copying buffer data byte for byte
 * `<Data> accessor [get]` - returns the `<Data>` instance for that field, not the reified value. To get the value: `instance[indexOrField].reify()`
 * `<Data> accessor [set]` - sets the value, mapping the structure in terms of arrays and objects to indices and fields. If the value is `null` then the `<Data>` structure will be deallocated.
