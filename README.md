@@ -156,18 +156,7 @@ A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.p
 Currently, index and field accessors on arrays and structs are lazily created and defined. This means something like `Object.keys(<Data>)` isn't reliable. The purpose of this is so that a JavaScript representation of data isn't created until it's actually needed, otherwise simply using _reified_ would use more memory than the data it's providing a view for. This will be addressed with an optional add-on component implementing Harmony Proxies. The trade-off is that these require running Node with a special flag, or in browsers require special flags, dev versions, etc.
 
 
-# ‹Type›
-
-##Defining a ‹Type›
-
-Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_.
-
-When defining a type, the `name` is optional but it allows you to reference the type by name either using the primary interface exported, the `reified` function, or when defining new types. It also helps format inspection output better and is used in debug output.
-
-* `new StructType(name, definition)` - Definition is an object with the desired structure, where the keys will be the fieldnames and the values are either _‹StructT›_ instances or their names.
-* `new ArrayType(name, memberType, count)` - memberType is the _‹Type›_ to be used for members, count is the preset length for each instance of `<Array>`.
-* `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multiple bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
-* `new NumericType(name, bytes)` - currently an internal API, used to initialize the preset numeric types
+## Usage
 
 The base export function `reified` is a shortcut for all of these constructors.
 
@@ -181,6 +170,27 @@ The base export function `reified` is a shortcut for all of these constructors.
 * `reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
 * `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
 * `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
+* `new reified('TypeName', buffer, offset, value)` - a shortcut for the above (`new` required)
+* `reified.data('TypeName', buffer, offset, value)` - also a shortcut for the above
+* `reified.reify(<Data>, [deallocate])` - Same as doing `<Data>.reify([deallocate])`. Recursively converts the data to JavaScript objects and values; Deletes any `<Data>` strucures is deallocate is true (not the buffer).
+* `reified.isType(o)` - Is `o` a `Type` (created by one of StructType, ArrayType, BitfieldType, or NumericType).
+* `reified.isData(o)` - Is `o` an instance of a `Type`.
+* `reified.defaultEndian` [getter/setter] ('BE' if default, can be 'LE') Modifies the endianness of reified's internal DataBuffer.prototype.
+
+
+# ‹Type›
+
+##Defining a ‹Type›
+
+Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_.
+
+When defining a type, the `name` is optional but it allows you to reference the type by name either using the primary interface exported, the `reified` function, or when defining new types. It also helps format inspection output better and is used in debug output.
+
+* `new StructType(name, definition)` - Definition is an object with the desired structure, where the keys will be the fieldnames and the values are either _‹StructT›_ instances or their names.
+* `new ArrayType(name, memberType, count)` - memberType is the _‹Type›_ to be used for members, count is the preset length for each instance of `<Array>`.
+* `new BitfieldType(name, flags, bytes)` - Flags can be an array of flag names, where each name is mapped to a bit, or an object mapping names to their numeric value. An object is useful for when there's composite values that flip multiple bits. Bytes is optional to specifically set the amount of bytes for an instance. Otherwise this is the minimal amount of bytes needed to contain the specified flags.
+* `new NumericType(name, bytes)` - currently an internal API, used to initialize the preset numeric types
+
 
 ## ‹Type› as constructor
 
@@ -189,8 +199,6 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 
 * `new ‹Type›(buffer, offset, value)` - instance using buffer, at `offset || 0`, optionally initialized with value.
 * `new ‹Type›(value)` - allocates new buffer initialized with value
-* `new reified('TypeName', buffer, offset, value)` - a shortcut for the above (`new` required)
-* `reified.data('TypeName', buffer, offset, value)` - also a shortcut for the above
 
 ## ‹Type› static functions and properties
 
