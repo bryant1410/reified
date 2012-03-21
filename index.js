@@ -38,18 +38,34 @@ function reified(type, subject, size, values){
   }
 }
 
+// ## static functions
+
 reified.data = function data(type, buffer, offset, values){
   type = genesis.lookupType(type);
   if (typeof type === 'string') throw new TypeError('Type not found "'+type+'"');
   return new type(buffer, offset, values);
 }
+
 reified.reify = function reify(data){
   return Object.getPrototypeOf(data).reify.call(data);
 }
 
-
 reified.isType = function isType(o){ return genesis.Type.isPrototypeOf(o) }
 reified.isData = function isData(o){ return genesis.Type.prototype.isPrototypeOf(o) }
+
+Object.defineProperty(reified, 'defaultEndian', {
+  enumerable: true,
+  configurable: true,
+  get: function(){
+    return Buffer.prototype.endianness;
+  },
+  set: function(v){
+    if (v !== 'LE' && v !== 'BE') throw new Error('Endianness must be "BE" or "LE"');
+    Buffer.prototype.endianness = v;
+  }
+});
+
+// ## structures
 
 Object.defineProperties(reified, {
   Type:          D._CW(genesis.Type),
@@ -58,16 +74,5 @@ Object.defineProperties(reified, {
   ArrayType:     D._CW(ArrayType),
   BitfieldType:  D._CW(BitfieldType),
   Buffer:        D._CW(Buffer),
-})
-
-Object.defineProperty(reified, 'defaultEndian', {
-  enumerable: true,
-  configurable: true,
-  get: function(){
-  	return Buffer.prototype.endianness;
-  },
-  set: function(v){
-  	if (v !== 'LE' && v !== 'BE') throw new Error('Endianness must be "BE" or "LE"');
-  	Buffer.prototype.endianness = v;
-  }
+  toString:      D._CW(function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' }),
 });

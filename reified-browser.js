@@ -242,7 +242,7 @@ function Type(ctor, proto){
   ctor.prototype.Type = ctor.name;
   ctor.prototype.constructor = ctor,
   ctor.prototype.prototype = copy(proto, Object.create(Data));
-  ctor.toString = function(){ return '❰❰❰❰'+ctor.name+'❱❱❱❱' }
+  ctor.toString = function(){ return '????????????'+ctor.name+'????????????' }
 }
 
 //Type.__proto__ = EventEmitter.prototype;
@@ -274,7 +274,7 @@ function createInterface(type, name, ctor){
 
   iface.prototype = ctor.prototype;
 
-  iface.toString = function(){ return ' ❰❰ ' + name + ' ❱❱ <'+this.bytes+'b>'  }
+  iface.toString = function(){ return ' ?????? ' + name + ' ?????? <'+this.bytes+'b>'  }
 
   if (name) registerType(name, iface);
   return copy(ctor, iface);
@@ -297,7 +297,6 @@ var Data = Type.prototype = {
   __proto__: EventEmitter.prototype,
   Class: 'Data',
   constructor: Type,
-  //toString: function toString(){ return '[object Data]' },
   rebase: function rebase(buffer){
     if (buffer == null) {
       buffer = new Buffer(this.bytes);
@@ -312,7 +311,7 @@ var Data = Type.prototype = {
   clone: function clone(){
     return new this.constructor(this.buffer, this.offset);
   },
-  toString: function toString(){ return '❰ '+this.constructor.name+' ❱ ('+this.bytes+'b)' },
+  toString: function toString(){ return '??? '+this.constructor.name+' ??? ('+this.bytes+'b)' },
   copy: function copy(buffer, offset){
     var copied = new this.constructor(buffer, offset);
     this.buffer.copy(copied.buffer, copied.offset, this.offset, this.offset + this.bytes);
@@ -899,6 +898,7 @@ Type(BitfieldType, {
 // ###             API Entrypoint            ###
 // #############################################
 
+exporter(reified);
 
 function reified(type, subject, size, values){
 
@@ -927,27 +927,20 @@ function reified(type, subject, size, values){
   }
 }
 
+// ## static functions
+
 reified.data = function data(type, buffer, offset, values){
   type = lookupType(type);
   if (typeof type === 'string') throw new TypeError('Type not found "'+type+'"');
   return new type(buffer, offset, values);
 }
+
 reified.reify = function reify(data){
   return Object.getPrototypeOf(data).reify.call(data);
 }
 
-
 reified.isType = function isType(o){ return Type.isPrototypeOf(o) }
 reified.isData = function isData(o){ return Type.prototype.isPrototypeOf(o) }
-
-Object.defineProperties(reified, {
-  Type:          D._CW(Type),
-  NumericType:   D._CW(NumericType),
-  StructType:    D._CW(StructType),
-  ArrayType:     D._CW(ArrayType),
-  BitfieldType:  D._CW(BitfieldType),
-  Buffer:        D._CW(Buffer)
-})
 
 Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
@@ -961,10 +954,17 @@ Object.defineProperty(reified, 'defaultEndian', {
   }
 });
 
-hidden.value = function(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' };
-Object.defineProperty(reified, 'toString', hidden);
-exporter(reified);
+// ## structures
 
+Object.defineProperties(reified, {
+  Type:          D._CW(Type),
+  NumericType:   D._CW(NumericType),
+  StructType:    D._CW(StructType),
+  ArrayType:     D._CW(ArrayType),
+  BitfieldType:  D._CW(BitfieldType),
+  Buffer:        D._CW(Buffer),
+  toString:      D._CW(function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' }),
+});
 
 
 
