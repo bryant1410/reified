@@ -13,7 +13,7 @@ var numTypes = {
     Int32: 4,
    Uint32: 4,
   Float32: 4,
-  Float64: 8,
+  Float64: 8
 };
 
 
@@ -54,7 +54,7 @@ function D(flags, value){
     value        : value,
     enumerable   : Boolean(flags & ENUMERABLE),
     configurable : Boolean(flags & CONFIGURABLE),
-    writable     : Boolean(flags & WRITABLE),
+    writable     : Boolean(flags & WRITABLE)
   };
 }
 
@@ -82,7 +82,6 @@ attachFlags(D);
 
 
 if (global.DataView) {
-  var Buffer = DataBuffer;
   function DataBuffer(buffer, offset, length){
     if (typeof buffer === 'number') {
       length = length || buffer;
@@ -105,14 +104,16 @@ if (global.DataView) {
     this.view = new DataView(this.parent, offset, length);
     this.length = length;
     this.offset = offset;
-  };
+  }
+
+  var Buffer = DataBuffer;
 
   DataBuffer.isBuffer = function isBuffer(o){ return DataBuffer.prototype.isPrototypeOf(o) }
 
   DataBuffer.prototype = copy({
     constructor: DataBuffer,
     endianness: 'LE',
-    get map(){ return Array.prototype.map.bind(this.octets) },
+    map: function(){ return Array.prototype.map.apply(this.octets, arguments) },
     slice: function(start, end){
       start = start || 0;
       end = end || 0;
@@ -174,7 +175,7 @@ if (global.DataView) {
     Object.defineProperty(DataBuffer.prototype, index, {
       configurable: true,
       get: function(){ return this.octets[index] },
-      set: function(v){ return this.octets[index] = v },
+      set: function(v){ return this.octets[index] = v }
     })
   });
 
@@ -404,7 +405,7 @@ function NumericType(name, bytes){
         delete this.offset;
       }
       return val;
-    },
+    }
   };
 
   return NumericSubtype(name, bytes, NumericT);
@@ -421,7 +422,7 @@ Type(NumericType, {
   realign: function realign(offset){
     D.hidden.value = offset || 0;
     Object.defineProperty(this, 'offset', D.hidden);
-  },
+  }
 });
 
 
@@ -589,7 +590,7 @@ Type(ArrayType, {
         else this[i].realign(offset);
       }
     }, this);
-  },
+  }
 });
 
 
@@ -748,7 +749,7 @@ Type(StructType, {
     this.constructor.names.forEach(function(field){
       this[field] = val;
     }, this);
-  },
+  }
 });
 
 
@@ -819,7 +820,8 @@ function BitfieldType(name, flags, bytes){
   BitfieldT.prototype = {
     flags: flags,
     length: bytes * 8,
-    toString: function toString(){ return this === BitfieldT.prototype ? '[object Data]' : this.map(function(v){ return +v }).join('') },
+    toString: function toString(){ return this === BitfieldT.prototype ? '[object Data]' : this.map(function(v){ return +v }).join('')
+  }
   };
 
   return defineFlags(BitfieldSubtype(name, bytes, BitfieldT));
@@ -887,7 +889,7 @@ Type(BitfieldType, {
   realign: function realign(offset){
     hidden.value = offset || 0;
     Object.defineProperty(this, 'offset', hidden);
-  },
+  }
 });
 
 
@@ -944,7 +946,7 @@ Object.defineProperties(reified, {
   StructType:    D._CW(StructType),
   ArrayType:     D._CW(ArrayType),
   BitfieldType:  D._CW(BitfieldType),
-  Buffer:        D._CW(Buffer),
+  Buffer:        D._CW(Buffer)
 })
 
 Object.defineProperty(reified, 'defaultEndian', {
@@ -959,10 +961,9 @@ Object.defineProperty(reified, 'defaultEndian', {
   }
 });
 
-
+hidden.value = function(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' };
+Object.defineProperty(reified, 'toString', hidden);
 exporter(reified);
-
-
 
 
 
@@ -1022,8 +1023,8 @@ function(item, name){
   //
   function searchListenerTree(handlers, type, tree, i) {
     if (!tree) {
-    }
       return [];
+    }
     var listeners=[], leaf, len, branch, xTree, xxTree, isolatedBranch, endReached,
         typeLength = type.length, currentType = type[i], nextType = type[i+1];
     if (i === typeLength && tree._listeners) {
@@ -1252,17 +1253,12 @@ function(item, name){
 
     // If there is no 'error' event listener then throw.
     if (type === 'error') {
-
-      if (!this._all &&
-        !this._events.error &&
-        !(this.wildcard && this.listenerTree.error)) {
-
+      if (!this._all && !this._events.error && !(this.wildcard && this.listenerTree.error)) {
         if (arguments[1] instanceof Error) {
           throw arguments[1]; // Unhandled 'error' event
         } else {
           throw new Error("Uncaught, unspecified 'error' event.");
         }
-        return false;
       }
     }
 
