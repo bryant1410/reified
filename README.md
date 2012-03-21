@@ -11,11 +11,42 @@ npm install reified
 
 For browsers there is now a rough combined version which will be improved over time. Right now it has zero testing for compatability aside from the fact that it worked in the version of Chrome what I made it work in. At minimum it will always required a ArrayBuffers or a brave soul who will translate the underlying Buffer class to work with strings.
 
-# Overview
+## Overview
 
-All of the following APIs are used in conjunction with Buffers. The purpose is to seamlessly give JavaScript mapping to an underlying set of bytes. Multiple different reified structures can point to the same underlying data. It's the same concept as DataView, except much more awesome.
+All of the following APIs are used in conjunction with Buffers. The purpose is to seamlessly give JavaScript mapping to an underlying set of bytes. Multiple different reified structures can point to the same underlying data. It's the same concept as DataView, except much more awesome. Structures are lazily created on demand are deallocated with prejudice.
 
-## Important notes on allocation/efficiency
+## Usage
+
+
+### `<Data>` creation
+All beside the Type are optional. Buffer will be allocated to the struct's size if not provided.
+
+* `new reified('TypeName' || Type, buffer, offset, value)` - Constructs an instance of _‹Type›_ (`<Data>`). `new` is required. 
+* `reified.data('TypeName' || Type, buffer, offset, value)` - Same but doesn't require `new`.
+
+###_‹Type›_ creation
+
+* _‹ArrayT›_    `reified('Uint8[10]')` - returns an _‹ArrayT›_ for the specified type and size
+* _‹ArrayT›_    `reified('Uint8[10][10][10]')` - arrays can be nested arbitrarily
+* _‹ArrayT›_    `reified('Octets', 'Uint8[10]')` - A label can also be specified
+* _‹ArrayT›_    `reified('OctetSet', 'Octets', 10)` - An array is created if the third parameter is a number and the second resolves to a _‹Type›_
+* _‹StructT›_   `reified('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
+* _‹BitfieldT›_ `reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
+* _‹BitfieldT›_ `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
+* _‹BitfieldT›_ `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using flags.
+
+### Utilities and Static Functions
+
+* `reified('Uint8')` - returns the _‹Type›_ that matches the name. All structures provided with a number are tracked and can be matched here.
+* `reified('RenameOctets', Octets)` - If the second parameter is a _‹Type›_ and there's no third parameter the type is renamed
+* `reified.reify(<Data>, [deallocate])` - Same as doing `<Data>.reify([deallocate])`. Recursively converts the data to JavaScript objects and values; Deletes any `<Data>` strucures is deallocate is true (not the buffer).
+* `reified.isType(o)` - Is `o` a `Type` (created by one of StructType, ArrayType, BitfieldType, or NumericType).
+* `reified.isData(o)` - Is `o` an instance of a `Type`.
+* `reified.defaultEndian` getter/setter ('BE' if default, can be 'LE') Modifies the endianness of reified's internal DataBuffer.prototype.
+
+
+
+# Important notes on allocation/efficiency
 
 `<Data>` instances are constructed by _‹Type›_'s. They are the interface that directly maps to memory and modifies it. Fields and indices in `<Array>`'s and `<Struct>`'s are lazily initialized. That is they will be created when something accesses the field. This poses no issue for accessing the field but it means the fields will be somewhat unpredictably defined or not defined on any given `<Data>` instance at any given time.
 
@@ -23,26 +54,6 @@ Something that walks the whole structure, like `<Data>.reify()` will initialize 
 
 Deallocating will always leave the top level container intact so you can always reinitialize arbitrarily. Deleting the top level is up to you. There's three primary ways of deallocating: `<Data>.reify(true)` will deallocate in the process if creating JavaScript values since this is a natural point where the data isn't needed anymore. `<Data>.realign(true)` also provides for deallocating in the same manner as often most of the structures need to be partially or fully reinitialized anyway. Finally you setting an index or field accessor to null will cause it to deallocate itself.
 
-## Usage
-
-The base export function `reified` is a shortcut for all of these constructors.
-
-* `reified('Uint8')` - returns the _‹Type›_ that matches the name
-* `reified('Uint8[10]')` - returns an _‹ArrayT›_ for the specified type and size
-* `reified('Uint8[10][10][10]')` - arrays can be nested arbitrarily
-* `reified('Octets', 'Uint8[10]')` - A label can also be specified
-* `reified('RenameOctets', Octets)` - If the second parameter is a _‹Type›_ and there's no third parameter the type is renamed
-* `reified('OctetSet', 'Octets', 10)` - An array is created if the third parameter is a number and the second resolves to a _‹Type›_
-* `reified('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
-* `reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
-* `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
-* `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
-* `new reified('TypeName', buffer, offset, value)` - a shortcut for the above (`new` required)
-* `reified.data('TypeName', buffer, offset, value)` - also a shortcut for the above
-* `reified.reify(<Data>, [deallocate])` - Same as doing `<Data>.reify([deallocate])`. Recursively converts the data to JavaScript objects and values; Deletes any `<Data>` strucures is deallocate is true (not the buffer).
-* `reified.isType(o)` - Is `o` a `Type` (created by one of StructType, ArrayType, BitfieldType, or NumericType).
-* `reified.isData(o)` - Is `o` an instance of a `Type`.
-* `reified.defaultEndian` getter/setter ('BE' if default, can be 'LE') Modifies the endianness of reified's internal DataBuffer.prototype.
 
 
 
@@ -228,15 +239,6 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 * `‹ArrayT›.count` - length for instances of `<Array>`.
 * `‹BitfieldT›.flags` - object containing flag names and the value they map to
 
-
-# `<Data>` 
-
-
-`<Data>` instances are constructed by _‹Type›_'s. They are the interface that directly maps to memory and modifies it. Fields and indices in `<Array>`'s and `<Struct>`'s are lazily initialized. That is they will be created when something accesses the field. This poses no issue for accessing the field but it means the fields will be somewhat unpredictably defined or not defined on any given `<Data>` instance at any given time.
-
-Something that walks the whole structure, like `<Data>.reify()` will initialize all the fields recursively. As such `<Data>.reify([deallocate])` can optionally deallocate immediately after reifying the data to JavaScript. What this means is that the `<Data>` structures in place, besides the top level, will be removed from memory. They will be reallocated as soon as you access an index or field, just like they initially were, so it isn't consequential from a usage standpoint. It's more important in terms of performance vs. memory usage and how a specific type of data will be accessed. Rarely accessed or one shot reads should always be deallocated, whereas something constantly being accessed shouldn't be.
-
-Deallocating will always leave the top level container intact so you can always reinitialize arbitrarily. Delete the top level is up to you. There's three primary methods of deallocating: `<Data>.reify(true)` will deallocate in the process if creating JavaScript values since this is a natural point where the data isn't needed anymore. `<Data>.realign(true)` also provides for deallocating in the same manner as often most of the structures need to be partially or fully reinitialized anyway. Finally you setting an index or field accessor to null will cause it to deallocate itself.
 
 ### Common
 
