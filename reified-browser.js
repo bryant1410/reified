@@ -242,8 +242,9 @@ function Type(ctor, proto){
   ctor.prototype.Type = ctor.name;
   ctor.prototype.constructor = ctor,
   ctor.prototype.prototype = copy(proto, Object.create(Data));
-  ctor.toString = function(){ return '????????????'+ctor.name+'????????????' }
+  ctor.toString = function(){ return '◀ '+ctor.name+' ▶' }
 }
+
 
 //Type.__proto__ = EventEmitter.prototype;
 Type.Class = 'Type';
@@ -274,7 +275,7 @@ function createInterface(type, name, ctor){
 
   iface.prototype = ctor.prototype;
 
-  iface.toString = function(){ return ' ?????? ' + name + ' ?????? <'+this.bytes+'b>'  }
+  iface.toString = function(){ return '‹' + name + '› <'+this.bytes+'b>'  }
 
   if (name) registerType(name, iface);
   return copy(ctor, iface);
@@ -282,7 +283,6 @@ function createInterface(type, name, ctor){
 
 function Subtype(name, bytes, ctor){
   ctor.bytes = bytes;
-  //ctor.toString = inspector('Type', ctor.name);
   ctor.prototype.bytes = bytes;
   ctor.prototype = copy(ctor.prototype, Object.create(this.prototype.prototype));
   return ctor.prototype.constructor = createInterface(this, name, ctor);
@@ -311,7 +311,7 @@ var Data = Type.prototype = {
   clone: function clone(){
     return new this.constructor(this.buffer, this.offset);
   },
-  toString: function toString(){ return '??? '+this.constructor.name+' ??? ('+this.bytes+'b)' },
+  toString: function toString(){ return '<' + this.constructor.name + '> ('+this.bytes+'b)' },
   copy: function copy(buffer, offset){
     var copied = new this.constructor(buffer, offset);
     this.buffer.copy(copied.buffer, copied.offset, this.offset, this.offset + this.bytes);
@@ -819,7 +819,7 @@ function BitfieldType(name, flags, bytes){
   BitfieldT.prototype = {
     flags: flags,
     length: bytes * 8,
-    toString: function toString(){ return this === BitfieldT.prototype ? '[object Data]' : this.map(function(v){ return +v }).join('')
+    toString: function toString(){ return this === BitfieldT.prototype ? '[BitfieldTData]' : this.map(function(v){ return +v }).join('')
   }
   };
 
