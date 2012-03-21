@@ -2,7 +2,7 @@
 
 StructTypes, ArrayTypes, NumberTypes. Create views on top of buffers that allow easy conversion to and from binary data.
 
-## Getting It
+## Get It
 
 For node, you can simply use npm to install it/
 ```
@@ -11,11 +11,35 @@ npm install reified
 
 For browsers there is now a rough combined version which will be improved over time. Right now it has zero testing for compatability aside from the fact that it worked in the version of Chrome what I made it work in. At minimum it will always required a ArrayBuffers or a brave soul who will translate the underlying Buffer class to work with strings.
 
-
 # Overview
 All of the following APIs are used in conjunction with Buffers. The purpose is to seamlessly give JavaScript mapping to an underlying set of bytes. Multiple different reified structures can point to the same underlying data. It's the same concept as DataView, except much more awesome.
 
+## Usage
+
+The base export function `reified` is a shortcut for all of these constructors.
+
+* `reified('Uint8')` - returns the _‹Type›_ that matches the name
+* `reified('Uint8[10]')` - returns an _‹ArrayT›_ for the specified type and size
+* `reified('Uint8[10][10][10]')` - arrays can be nested arbitrarily
+* `reified('Octets', 'Uint8[10]')` - A label can also be specified
+* `reified('RenameOctets', Octets)` - If the second parameter is a _‹Type›_ and there's no third parameter the type is renamed
+* `reified('OctetSet', 'Octets', 10)` - An array is created if the third parameter is a number and the second resolves to a _‹Type›_
+* `reified('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
+* `reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
+* `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
+* `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
+* `new reified('TypeName', buffer, offset, value)` - a shortcut for the above (`new` required)
+* `reified.data('TypeName', buffer, offset, value)` - also a shortcut for the above
+* `reified.reify(<Data>, [deallocate])` - Same as doing `<Data>.reify([deallocate])`. Recursively converts the data to JavaScript objects and values; Deletes any `<Data>` strucures is deallocate is true (not the buffer).
+* `reified.isType(o)` - Is `o` a `Type` (created by one of StructType, ArrayType, BitfieldType, or NumericType).
+* `reified.isData(o)` - Is `o` an instance of a `Type`.
+* `reified.defaultEndian` getter/setter ('BE' if default, can be 'LE') Modifies the endianness of reified's internal DataBuffer.prototype.
+
+
+## Examples
+
 The following examples use reified's option to automatically allocate a buffer during construction, but any of them also work when provided an existing buffer and optional offset. The real power is loading a file or chunk of memory and mapping a protocol or file format seamlessly from bytes to JavaScript and back.
+
 
 #### NumericType
 Float32, Float64, Int8, Uint8, Int16, Uint16, Int32, Uint32, Int64, Uint64
@@ -145,7 +169,13 @@ desc.read()
 ```
 
 
-# Terminology
+
+
+
+# API in detail
+
+
+## Terminology
 
 At the top level is the Type constructors, listed above. `new ArrayType` creates an instance of _‹ArrayT›_, `new StructType` creates an instance of _‹StructT›_ etc. _‹Type›_ is used to indicate something common to all instances of all types. _‹StructT›_ is used to indicate something common to all instances of StructTypes. `‹Type›.__proto__` is one of the top level Type constructors' prototypes like `ArrayType.prototype`. `ArrayType.protoype.__proto__` and the others share a common genesis, the top level `Type`.
 
@@ -156,31 +186,9 @@ A _‹Type›_ is the constructor for a given type of `<Data>`, so `‹Type›.p
 Currently, index and field accessors on arrays and structs are lazily created and defined. This means something like `Object.keys(<Data>)` isn't reliable. The purpose of this is so that a JavaScript representation of data isn't created until it's actually needed, otherwise simply using _reified_ would use more memory than the data it's providing a view for. This will be addressed with an optional add-on component implementing Harmony Proxies. The trade-off is that these require running Node with a special flag, or in browsers require special flags, dev versions, etc.
 
 
-## Usage
-
-The base export function `reified` is a shortcut for all of these constructors.
-
-* `reified('Uint8')` - returns the _‹Type›_ that matches the name
-* `reified('Uint8[10]')` - returns an _‹ArrayT›_ for the specified type and size
-* `reified('Uint8[10][10][10]')` - arrays can be nested arbitrarily
-* `reified('Octets', 'Uint8[10]')` - A label can also be specified
-* `reified('RenameOctets', Octets)` - If the second parameter is a _‹Type›_ and there's no third parameter the type is renamed
-* `reified('OctetSet', 'Octets', 10)` - An array is created if the third parameter is a number and the second resolves to a _‹Type›_
-* `reified('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8'})` - If the second parameter is a non-type object then a _‹StructT›_ is created
-* `reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
-* `reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
-* `reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
-* `new reified('TypeName', buffer, offset, value)` - a shortcut for the above (`new` required)
-* `reified.data('TypeName', buffer, offset, value)` - also a shortcut for the above
-* `reified.reify(<Data>, [deallocate])` - Same as doing `<Data>.reify([deallocate])`. Recursively converts the data to JavaScript objects and values; Deletes any `<Data>` strucures is deallocate is true (not the buffer).
-* `reified.isType(o)` - Is `o` a `Type` (created by one of StructType, ArrayType, BitfieldType, or NumericType).
-* `reified.isData(o)` - Is `o` an instance of a `Type`.
-* `reified.defaultEndian` [getter/setter] ('BE' if default, can be 'LE') Modifies the endianness of reified's internal DataBuffer.prototype.
-
-
 # ‹Type›
 
-##Defining a ‹Type›
+## Defining a ‹Type›
 
 Aside from the provided _‹NumericT›_'s you will be providing your own definitions. _‹Types›_ are built kind of like using legos; you can use any _‹Types›_ in creating the definition for a _‹StructT›_ or _‹ArrayT›_.
 
@@ -222,8 +230,6 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 Something that walks the whole structure, like `<Data>.reify()` will initialize all the fields recursively. As such `<Data>.reify([deallocate])` can optionally deallocate immediately after reifying the data to JavaScript. What this means is that the `<Data>` structures in place, besides the top level, will be removed from memory. They will be reallocated as soon as you access an index or field, just like they initially were, so it isn't consequential from a usage standpoint. It's more important in terms of performance vs. memory usage and how a specific type of data will be accessed. Rarely accessed or one shot reads should always be deallocated, whereas something constantly being accessed shouldn't be.
 
 Deallocating will always leave the top level container intact so you can always reinitialize arbitrarily. Delete the top level is up to you. There's three primary methods of deallocating: `<Data>.reify(true)` will deallocate in the process if creating JavaScript values since this is a natural point where the data isn't needed anymore. `<Data>.realign(true)` also provides for deallocating in the same manner as often most of the structures need to be partially or fully reinitialized anyway. Finally you setting an index or field accessor to null will cause it to deallocate itself.
-
-## methods and properties
 
 ### Common
 
@@ -300,113 +306,6 @@ Which would emit those events for __every single type__.
 
 
 
-# More Example Usage
-
-## Indexed Bitfield
-```javascript
-var bitfield = new BitfieldType(4)
- ‹Bitfield›(32bit)
-
-var bits = new bitfield
- ‹Bitfield›[00000000000000000000000000000000]
-
-bits.write(0); bits
- ‹Bitfield›[00000000000000000000000000000000]
-
-bits[12] = true; bits[1] = true; bits;
-//-->
-‹Bitfield›[01000000000010000000000000000000]
-
-bits.read()
- 4098
-
-bits.reify()
-//-->
-[ false, true, false, false, false, false, false, false, false, false, false,
-  false, true, false, false, false, false, false, false, false, false, false,
-  false, false, false, false, false, false, false, false, false, false ]
-```
-
-## .lnk File Format
-```javascript
-var CLSID = new ArrayType('CLSID', Uint8, 16)
-var FILETIME = new StructType('FILETIME ', { Low: Uint32, High: Uint32 })
-var LinkFlags = new BitfieldType('LinkFlags', ['HasLinkTargetIDList','HasLinkInfo','HasName','HasRelativePath',
-  'HasWorkingDir','HasArguments','HasIconLocation','IsUnicode','ForceNoLinkInfo','HasExpString','RunInSeparateProcess',
-  'UNUSED1','HasDarwinID','RunAsUser','HasExpIcon','NoPidAlias','UNUSED2','RunWithShimLayer','ForceNoLinkTrack',
-  'EnableTargetMetadata','DisableLinkPathTracking','DisableKnownFolderTracking','DisableKnownFolderAlias',
-  'AllowLinkToLink','UnaliasOnSave','PreferEnvironmentPath','KeepLocalIDListForUNCTarget'
-]);
-var FileAttributesFlags = new BitfieldType('FileAttributesFlags', ['READONLY','HIDDEN','SYSTEM','UNUSED1','DIRECTORY','ARCHIVE',
-  'UNUSED2','NORMAL','TEMPORARY','SPARSE_FILE','REPARSE_POINT','COMPRESSED','OFFLINE','NOT_CONTENT_INDEXED','ENCRYPTED'
-])
-var ShellLinkHeader = new StructType('ShellLinkHeader', {
-  HeaderSize: Uint32,
-  LinkCLSID:  CLSID,
-  LinkFlags:  LinkFlags,
-  FileAttributes: FileAttributesFlags,
-  CreationTime:  FILETIME,
-  AccessTime:  FILETIME,
-  WriteTime:  FILETIME,
-  FileSize: Uint32,
-  IconIndex: Int32,
-  ShowCommand: Uint32
-});
-//-->
-‹ShellLinkHeader›(62b)
-| HeaderSize:     ‹Uint32›
-| LinkCLSID:      ‹CLSID›(16b)[ 16 ‹Uint8› ]
-| LinkFlags:      ‹LinkFlags›(32bit)
-  0x1           HasLinkTargetIDList
-  0x2           HasLinkInfo
-  0x4           HasName
-  0x8           HasRelativePath
-  0x10          HasWorkingDir
-  0x20          HasArguments
-  0x40          HasIconLocation
-  0x80          IsUnicode
-  0x100         ForceNoLinkInfo
-  0x200         HasExpString
-  0x400         RunInSeparateProcess
-  0x800         UNUSED1
-  0x1000        HasDarwinID
-  0x2000        RunAsUser
-  0x4000        HasExpIcon
-  0x8000        NoPidAlias
-  0x10000       UNUSED2
-  0x20000       RunWithShimLayer
-  0x40000       ForceNoLinkTrack
-  0x80000       EnableTargetMetadata
-  0x100000      DisableLinkPathTracking
-  0x200000      DisableKnownFolderTracking
-  0x400000      DisableKnownFolderAlias
-  0x800000      AllowLinkToLink
-  0x1000000     UnaliasOnSave
-  0x2000000     PreferEnvironmentPath
-  0x4000000     KeepLocalIDListForUNCTarget
-| FileAttributes: ‹FileAttributesFlags›(16bit)
-  0x1      READONLY
-  0x2      HIDDEN
-  0x4      SYSTEM
-  0x8      UNUSED1
-  0x10     DIRECTORY
-  0x20     ARCHIVE
-  0x40     UNUSED2
-  0x80     NORMAL
-  0x100    TEMPORARY
-  0x200    SPARSE_FILE
-  0x400    REPARSE_POINT
-  0x800    COMPRESSED
-  0x1000   OFFLINE
-  0x2000   NOT_CONTENT_INDEXED
-  0x4000   ENCRYPTED
-| CreationTime:   ‹FILETIME›(8b) { Low: ‹Uint32› | High: ‹Uint32› }
-| AccessTime:     ‹FILETIME›(8b) { Low: ‹Uint32› | High: ‹Uint32› }
-| WriteTime:      ‹FILETIME›(8b) { Low: ‹Uint32› | High: ‹Uint32› }
-| FileSize:       ‹Uint32›
-| IconIndex:      ‹Int32›
-| ShowCommand:    ‹Uint32›
-```
 
 ## TODO
 
