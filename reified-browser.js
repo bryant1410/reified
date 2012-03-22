@@ -16,18 +16,17 @@ var numTypes = {
   Float64: 8
 };
 
-
 function isObject(o){ return Object(o) === o }
 function bits(n){ return Math.log(n) / Math.LN2 }
 function bytesFor(n){ return ((bits(n) / 8) | 0) + 1 }
-
+function toNum(n){ return isFinite(n) ? +n : 0 }
+function toNumOrUndef(n){ if (isFinite(n)) return +n }
+function toUint8(x) { return (x >>> 0) & 0xff }
 
 function max(arr){
   if (Array.isArray(arr)) return arr.reduce(function(r,s){ return Math.max(s, r) }, 0);
   else return Object.keys(arr).reduce(function(r,s){ return Math.max(arr[s], r) }, 0);
 }
-
-
 function copy(from, to, hidden){
   Object[hidden ? 'getOwnPropertyNames' : 'keys'](from).forEach(function(key){
     var desc = Object.getOwnPropertyDescriptor(from, key);
@@ -35,18 +34,6 @@ function copy(from, to, hidden){
     Object.defineProperty(to, key, desc);
   });
   return to;
-}
-
-
-function mapMethods(fn) {
-  fn('Uint8', 'UInt8');
-  fn('Int8', 'Int8');
-  fn('Float32', 'Float', true);
-  fn('Float64', 'Double', true);
-  fn('Uint16', 'UInt16', true);
-  fn('Int16', 'Int16', true);
-  fn('Uint32', 'UInt32', true);
-  fn('Int32', 'Int32', true);
 }
 
 function D(flags, value){
@@ -57,7 +44,6 @@ function D(flags, value){
     writable     : Boolean(flags & WRITABLE)
   };
 }
-
 var PRIVATE      = 0,
     ENUMERABLE   = 1,
     CONFIGURABLE = 2,
@@ -80,117 +66,133 @@ function attachFlags(o){
 
 attachFlags(D);
 
+var types = ['Int8', 'Int16', 'Int32', 'Uint8', 'Uint16', 'Uint32', 'Float32', 'Float64'];
 
-if (global.DataView) {
-  function DataBuffer(buffer, offset, length){
-    if (typeof buffer === 'number') {
-      length = length || buffer;
-      offset = offset || 0;
-      buffer = new ArrayBuffer(buffer);
-      length = buffer.byteLength;
-    } else if ('buffer' in buffer) {
-      while (buffer.buffer) {
-        buffer = buffer.buffer;
-      }
-    } else if (Array.isArray(buffer)) {
-      var vals = buffer;
-      buffer = new ArrayBuffer(vals);
-      length = buffer.byteLength;
-    }
-    offset = offset || 0;
-    length = length || buffer.byteLength || buffer.length;
-    this.parent = buffer;
-    this.octets = new Uint8Array(this.parent, offset, length);
-    this.view = new DataView(this.parent, offset, length);
-    this.length = length;
-    this.offset = offset;
+
+if (typeof Buffer !== 'function'){
+  var Buffer = function Buffer(subject, offset, length){
+    return new ArrayBuffer(subject, offset, length);
   }
-
-  var Buffer = DataBuffer;
-
-  DataBuffer.isBuffer = function isBuffer(o){ return DataBuffer.prototype.isPrototypeOf(o) }
-
-  DataBuffer.prototype = copy({
-    constructor: DataBuffer,
-    endianness: 'LE',
-    map: function(){ return Array.prototype.map.apply(this.octets, arguments) },
-    slice: function(start, end){
-      start = start || 0;
-      end = end || 0;
-      return new DataBuffer(this.octets.subarray(start, end), this.offset + start, end - start);
-    },
-    clone: function(){ return new DataBuffer(this) },
-    fill: function(v){ [].forEach.call(this.octets, function(n,i){ this.writeUint8(v || 0, i) }, this);  },
-    copy: function(target, targetStart, start, end){
-      if (!DataBuffer.isBuffer(target)) {
-        target = new DataBuffer(target);
-      }
-      var targetLength = target.length || target.byteLength;
-      start = start || 0;
-      end = end || this.length;
-      targetStart = targetStart || 0;
-
-      if (targetLength === 0 || this.length === 0 || end === start) return 0;
-      if (end < start)                                     throw new Error('End is before start');
-      if (targetStart < 0 || targetStart >= targetLength)  throw new Error('targetStart out of bounds');
-      if (start < 0 || start >= this.length)               throw new Error('sourceStart out of bounds');
-      if (end < 0 || end > this.length)                    throw new Error('sourceEnd out of bounds');
-
-      end = end > this.length ? this.length : end;
-
-      if (targetLength - targetStart < end - start) {
-        end = targetLength - targetStart + start;
-      }
-
-      var i = -1;
-      while (i++ < end - start) {
-        target[targetStart+i] = this[start+i];
-      }
-    },
-    asciiSlice: function(from, to){
-      from = from || 0;
-      to = to || this.octets.byteLength;
-      var buf = this.octets.subarray(from, to);
-      return Array.prototype.map.call(buf, function(s){ return String.fromCharCode(s) }).join('');
-    },
-    toString: function(){
-      if (this.length > 500) {
-        var buf = this.slice(0, 500);
-      } else {
-        var buf = this;
-      }
-      return buf.map(function(v){
-        return ('000'+v.toString(10)).slice(-3)
-      }).join(' ')
-        .split(/((?:\d\d\d ?){10}(?: ))/)
-        .filter(Boolean)
-        .map(Function.call.bind(''.trim))
-        .join('\n')
-    }
-  }, Object.create(DataView.prototype));
-
-
-
-  Array.apply(null, Array(20)).forEach(function(n, index){
-    Object.defineProperty(DataBuffer.prototype, index, {
-      configurable: true,
-      get: function(){ return this.octets[index] },
-      set: function(v){ return this.octets[index] = v }
-    })
-  });
-
-  mapMethods(function(to, from, usesEndian){
-    if (usesEndian) {
-      DataBuffer.prototype['read'+to]  = function(offset){ return this.view['get'+to].call(this.view, offset || 0, this.endianness === 'LE') }
-      DataBuffer.prototype['write'+to] = function(value, offset){ return this.view['set'+to].call(this.view, offset || 0, value || 0, this.endianness === 'LE') }
-    } else {
-      DataBuffer.prototype['read'+to]  = function(offset){ return this.view['get'+to].call(this.view, offset || 0) }
-      DataBuffer.prototype['write'+to] = function(value, offset){ return this.view['set'+to].call(this.view, offset || 0, value || 0) }
-    }
-  })
-} else {
-  throw new Error ('No suitable backing store found');
+  Buffer.isBuffer = function isBuffer(o){
+    return o instanceof ArrayBuffer;
+  }
 }
+
+
+var ArrayBuffers = { ArrayBuffer:  ArrayBuffer };
+
+function isArrayBuffer(o){
+  return !!(o && o.constructor && o.constructor.name in ArrayBuffers);
+}
+
+
+function DataBuffer(subject, offset, length){
+  if (!subject) throw new Error('Tried to initialize with no usable length or subject');
+  if (isArrayBuffer(subject)) {
+    this.array = subject;
+  }
+  if (subject.buffer) {
+    offset = (subject.offset || subject.byteOffset || 0) + (offset || 0);
+    while (subject.buffer) subject = subject.buffer;
+  }
+  if (typeof subject === 'number') {
+    this.view = new DataView(new Buffer(subject));
+  } else if (Buffer.isBuffer(subject)) {
+    this.view = new DataView(subject, offset, length);
+  } else if (subject instanceof DataView) {
+    this.view = (offset || length) ? new DataView(subject, offset || 0, length) :  new DataView(subject);
+  }
+  this.length = this.bytes = this.view.byteLength;
+  this.buffer = this.view.buffer;
+  this.offset = this.view.byteOffset;
+}
+
+DataBuffer.isBuffer = function isBuffer(o){ return DataBuffer.prototype.isPrototypeOf(o) }
+
+
+DataBuffer.prototype = {
+  constructor: DataBuffer,
+  endianness: 'BE',
+  subarray: function(start, end){
+    start = toNum(start);
+    end = toNumOrUndef(end - start);
+    return new DataBuffer(this.view, start, end);
+  },
+  typed: function(type, offset, length){
+    type = ArrayBuffers[type+'Array'];
+    var maxLength = this.bytes / type.BYTES_PER_ELEMENT | 0;
+    offset = toNum(offset);
+    length = toNum(length) || maxLength - offset;
+    return new type(this.buffer, offset, length)
+  },
+  copy: function(target, targetOffset, start, end){
+    if (isFinite(target)) {
+      end = start, start = targetOffset, targetOffset = target;
+      target = null;
+    }
+    targetOffset = toNum(targetOffset);
+    start = toNum(start);
+    end = toNum(end) || this.bytes - start;
+    if (start > end) throw new Error('End less than start');
+    if (start < 0) throw new RangeError('Start less than zero');
+    if (end > this.bytes) throw new RangeError('End outside buffer');
+    var length = end - start;
+    if (!target) {
+      target = new Buffer(length);
+    } else {
+      if (target.length < length) length = target.length;
+    }
+
+    var buffer = new DataBuffer(target, targetOffset, length);
+    var source = this.subarray(start, end);
+    for (var i=0; i<length; i++) {
+      buffer.writeUint8(i, source.readUint8(i));
+    }
+    return buffer;
+  },
+  clone: function(){
+    var buffer = new DataBuffer(this.s);
+    for (var i=0; i<this.s-1; i++) {
+      buffer.writeUint8(i, this.readUint8(i));
+    }
+    return buffer;
+  },
+  fill: function(v){
+    v = toNum(v);
+    var buff = new Uint8Array(this.buffer);
+    for (var i=0; i < this.s; i++) {
+      buff[i] = v;
+    }
+  },
+}
+
+types.forEach(function(type){
+  ArrayBuffers[type+'Array'] = global[type+'Array'];
+  DataBuffer.prototype['read'+type] = function(offset){
+    return this.view['get'+type](toNum(offset), this.endianness === 'BE');
+  }
+  DataBuffer.prototype['write'+type] = function(offset, value){
+    return this.view['set'+type](toNum(offset), toNum(value), this.endianness === 'BE');
+  }
+});
+
+
+Array.apply(null, Array(20)).forEach(function(n, index){
+  Object.defineProperty(DataBuffer.prototype, index, {
+    configurable: true,
+    get: function(){ return this.readUint8(index) },
+    set: function(v){ return this.writeUint8(index, v) }
+  })
+});
+
+
+
+
+
+
+
+
+
 
 
 
@@ -228,6 +230,9 @@ function lookupType(name, label){
 }
 
 
+
+
+
 // ########################
 // ### Genesis for Type ###
 // ########################
@@ -246,7 +251,7 @@ function Type(ctor, proto){
 }
 
 
-//Type.__proto__ = EventEmitter.prototype;
+
 Type.Class = 'Type';
 Type.array = function array(n){ return new ArrayType(this, n) }
 Type.isInstance = function isInstance(o){ return this.prototype.isPrototypeOf(o) }
@@ -258,6 +263,9 @@ Array.apply(null, Array(20)).forEach(function(n, i){
     get: function(){ return this.array(i) }
   });
 });
+
+
+
 
 function createInterface(type, name, ctor){
   var iface = Function(name+'Constructor', 'return function '+name+'(buffer, offset, values){ return new '+name+'Constructor(buffer, offset, values) }')(ctor);
@@ -281,12 +289,16 @@ function createInterface(type, name, ctor){
   return copy(ctor, iface);
 }
 
+
 function Subtype(name, bytes, ctor){
   ctor.bytes = bytes;
   ctor.prototype.bytes = bytes;
   ctor.prototype = copy(ctor.prototype, Object.create(this.prototype.prototype));
   return ctor.prototype.constructor = createInterface(this, name, ctor);
 }
+
+
+
 
 
 // ########################
@@ -296,14 +308,12 @@ function Subtype(name, bytes, ctor){
 var Data = Type.prototype = {
   __proto__: EventEmitter.prototype,
   Class: 'Data',
-  constructor: Type,
   rebase: function rebase(buffer){
     if (buffer == null) {
-      buffer = new Buffer(this.bytes);
+      buffer = new DataBuffer(this.bytes);
       buffer.fill(0);
     } else {
-      while (buffer.buffer) buffer = buffer.buffer;
-      buffer = Buffer.isBuffer(buffer) ? buffer : new Buffer(buffer);
+      buffer = new DataBuffer(buffer);
     }
     hidden.value = buffer;
     Object.defineProperty(this, 'buffer', hidden);
@@ -316,6 +326,13 @@ var Data = Type.prototype = {
     var copied = new this.constructor(buffer, offset);
     this.buffer.copy(copied.buffer, copied.offset, this.offset, this.offset + this.bytes);
     return copied;
+  },
+  cast: function cast(type, align){
+    if (typeof (type = lookupType(type)) === 'string') throw new TypeError('Unknown type "'+type+'"');
+    if (type.bytes < this.bytes) throw new RangeError('Tried to cast to a smaller size "'+type.name+'"');
+    if (this.buffer.length < type.bytes) throw new RangeError('Type is bigger than this buffer: "'+type.name+'"');
+    align = (type.bytes === this.bytes || !align) ? 0 : align < 0 ? this.bytes-type.bytes : +align;
+    return new type(this.buffer, this.offset + align);
   }
 };
 
@@ -327,9 +344,8 @@ var Data = Type.prototype = {
 
 var NumericSubtype = Subtype.bind(NumericType);
 
-/**
- * Coerce to number when appropriate and verify number against type storage
- */
+
+/** * Coerce to number when appropriate and verify number against type storage */
 function checkType(type, val){
   if (val && val.DataType) {
     if (val.DataType === 'numeric' && val.Subtype === 'Int64' || val.Subtype === 'Uint64') {
@@ -339,7 +355,7 @@ function checkType(type, val){
         throw new RangeError(val + ' exceeds '+type+' capacity');
       }
     } else if (val.DataType === 'array' || val.DataType === 'struct') {
-      if (val.bytes > numTypes[type][0]) {
+      if (val.bytes > types[type][0]) {
         throw new RangeError(val + ' exceeds '+type+' capacity');
       } else {
         val = val.reify();
@@ -354,11 +370,14 @@ function checkType(type, val){
   } else {
     throw new TypeError('Invalid value for ' + type + ': ' + val.DataType);
   }
-  if (val && bits(val) / 8 > numTypes[type][0]) {
+  if (val && bits(val) / 8 > types[type][0]) {
     throw new RangeError(val + ' exceeds '+type+' capacity');
   }
   return val;
 }
+
+
+
 
 
 
@@ -392,23 +411,21 @@ function NumericType(name, bytes){
 
   NumericT.prototype = {
     Subtype: name,
-    write: function write(v){ this.buffer['write'+name](checkType(name, v), this.offset); return this; },
+    write: function write(v){
+      this.buffer['write'+name](this.offset, checkType(name, v));
+      return this;
+    },
     reify: function reify(deallocate){
       var val = this.reified = this.buffer['read'+name](this.offset);
       this.emit('reify', val);
       val = this.reified;
-      delete this.reified;
-      if (deallocate) {
-        this.emit('deallocate');
-        delete this.buffer;
-        delete this.offset;
-      }
       return val;
-    }
+    },
   };
 
   return NumericSubtype(name, bytes, NumericT);
 }
+
 
 
 // ########################
@@ -417,11 +434,11 @@ function NumericType(name, bytes){
 
 Type(NumericType, {
   DataType: 'numeric',
-  fill: function fill(v){ this.write(v || 0) },
+  fill: function fill(v){ this.write(0, v || 0) },
   realign: function realign(offset){
     D.hidden.value = offset || 0;
     Object.defineProperty(this, 'offset', D.hidden);
-  }
+  },
 });
 
 
@@ -430,12 +447,12 @@ Object.keys(numTypes).forEach(function(name){
 });
 
 
-
 // ###############################################
 // ###               ArrayTypes                ###
 // ###############################################
 
 var ArraySubtype = Subtype.bind(ArrayType);
+
 
 
 // #############################
@@ -458,7 +475,8 @@ function ArrayType(name, MemberType, length) {
   // ##########################
 
   function ArrayT(buffer, offset, values){
-    if (!Buffer.isBuffer(buffer)) {
+    if (!
+      ViewBuffer.isBuffer(buffer)) {
       values = buffer;
       buffer = null;
     }
@@ -479,35 +497,13 @@ function ArrayType(name, MemberType, length) {
   return defineIndices(ArraySubtype(name, bytes, ArrayT));
 }
 
-
-function initIndex(target, MemberType, index){
-  var block = new MemberType(target.buffer, target.offset + index * MemberType.bytes);
-  Object.defineProperty(target, index, {
-    enumerable: true,
-    configurable: true,
-    get: function(){ return block },
-    set: function(v){
-      if (v === null) {
-        // take null to mean full deallocate
-        this.emit('deallocate', index);
-        Object.defineProperty(this, index, D.nullable);
-        delete this[index];
-        block = null;
-      } else {
-        block.write(v, index)
-      }
-    }
-  });
-  return block;
-}
-
 function defineIndices(target){
   Array.apply(null, Array(target.count)).forEach(function(n, index){
     Object.defineProperty(target.prototype, index, {
       enumerable: true,
       configurable: true,
       get: function(){ return initIndex(this, target.memberType, index) },
-      set: function(v){ initIndex(this, target.memberType, index).write(v, index) }
+      set: function(v){ initIndex(this, target.memberType, index).write(v) }
     });
   });
   return target;
@@ -535,6 +531,12 @@ Type(ArrayType, {
     return output;
   },
 
+  copy: function copy(buffer, offset){
+    var copied = new this.constructor(buffer, offset);
+    this.buffer.copy(copied.buffer, copied.offset, this.offset, this.offset + this.bytes);
+    return copied;
+  },
+
   write: function write(value, index, offset){
     if (value == null) throw new TypeError('Tried to write nothing');
 
@@ -556,7 +558,7 @@ Type(ArrayType, {
     // reify if needed, direct buffer copying doesn't happen here
     if (value.reify) value = value.reify();
 
-    if (Array.isArray(value) || value && 'length' in value) {
+    if (Array.isArray(value) || Object(value) === value && 'length' in value) {
       // arrayish and offset + index are already good to go
       while (index < this.length && offset < value.length) {
         var current = value[offset++];
@@ -589,10 +591,8 @@ Type(ArrayType, {
         else this[i].realign(offset);
       }
     }, this);
-  }
+  },
 });
-
-
 
 
 NumericType.Uint64 = new ArrayType('Uint64', 'Uint32', 2);
@@ -607,12 +607,12 @@ NumericType.Int64.prototype.octets = octets;
 
 
 
-
 // ###############################################
 // ###               StructTypes               ###
 // ###############################################
 
 var StructSubtype = Subtype.bind(StructType);
+
 
 
 // ##############################
@@ -642,7 +642,7 @@ function StructType(name, fields){
   // ###########################
 
   function StructT(buffer, offset, values){
-    if (!Buffer.isBuffer(buffer)) {
+    if (!isBuffer(buffer)) {
       values = buffer;
       buffer = null;
     }
@@ -664,6 +664,7 @@ function StructType(name, fields){
 
   return defineFields(StructSubtype(name, bytes, StructT));
 }
+
 
 function initField(target, ctor, field){
   var block = new ctor.fields[field](target.buffer, target.offset + ctor.offsets[field]) ;
@@ -698,11 +699,9 @@ function defineFields(target){
   return target;
 }
 
-
-
-// ##############################################
-// ###              BitfieldTypes             ###
-// ##############################################
+// #######################
+// ### StructType Data ###
+// #######################
 
 Type(StructType, {
   DataType: 'struct',
@@ -736,7 +735,6 @@ Type(StructType, {
   realign: function realign(offset, deallocate){
     D.hidden.value = offset || 0;
     Object.defineProperty(this, 'offset', D.hidden);
-    // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
     Object.keys(this).forEach(function(field){
       if (deallocate) this[field] = null;
       else this[field].realign(offset);
@@ -748,19 +746,17 @@ Type(StructType, {
     this.constructor.names.forEach(function(field){
       this[field] = val;
     }, this);
-  }
+  },
 });
 
 
-// ################################
-// ### BitfieldType Constructor ###
-// ################################
-
-var BitfieldSubtype = Subtype.bind(BitfieldType);
-
-var views = [Uint8Array, Uint8Array, Uint16Array, Uint32Array, Uint32Array];
+// ##############################################
+// ###              BitfieldTypes             ###
+// ##############################################
 var powers = Array.apply(null, Array(32)).map(Function.call.bind(Number)).map(Math.pow.bind(null, 2));
 
+
+var  BitfieldSubtype = Subtype.bind(BitfieldType);
 
 // ################################
 // ### BitfieldType Constructor ###
@@ -785,9 +781,8 @@ function BitfieldType(name, flags, bytes){
   }
 
   if (!(bytes > 0)) {
-    bytes = bytesFor(max(flags));
+    bytes = bytesFor(max(flags)) ;
   }
-
   // #############################
   // ### BitfieldT Constructor ###
   // #############################
@@ -819,17 +814,17 @@ function BitfieldType(name, flags, bytes){
   BitfieldT.prototype = {
     flags: flags,
     length: bytes * 8,
-    toString: function toString(){ return this === BitfieldT.prototype ? '[BitfieldTData]' : this.map(function(v){ return +v }).join('')
-  }
+    toString: function toString(){ return this === BitfieldT.prototype ? '[BitfieldTData]' : this.map(function(v){ return +v }).join('') },
   };
 
   return defineFlags(BitfieldSubtype(name, bytes, BitfieldT));
 }
 
-
 function defineFlags(target) {
+  var largest = 0;
   Object.keys(target.flags).forEach(function(flag){
     var val = target.flags[flag];
+    largest = Math.max(largest, val);
     Object.defineProperty(target.prototype, flag, {
       configurable: true,
       enumerable: true,
@@ -839,6 +834,7 @@ function defineFlags(target) {
   });
   Array.apply(null, Array(target.bytes * 8)).forEach(function(n, i){
     var power = powers[i];
+    if (power > largest) return;
     Object.defineProperty(target.prototype, i, {
       configurable: true,
       enumerable: true,
@@ -848,8 +844,6 @@ function defineFlags(target) {
   });
   return target;
 }
-
-
 
 // #########################
 // ### BitfieldType Data ###
@@ -863,13 +857,13 @@ Type(BitfieldType, {
   get: function get(i){ return (this.read() & powers[i]) > 0 },
   set: function get(i){ this.write(this.read() | powers[i]); return this; },
   unset: function unset(i){ this.write(this.read() & ~powers[i]); return this; },
-  write: function write(v){ this.buffer['writeUint'+this.bytes*8](v, this.offset); return this; },
+  write: function write(v){ this.buffer['writeUint'+this.bytes*8](this.offset, v); return this; },
   read: function read(){ return this.buffer['readUint'+this.bytes*8](this.offset) },
   reify: function reify(deallocate){
     var flags = Object.keys(this.flags);
     if (flags.length) {
-      var val = this.reified = flags.reduce(function(ret, flag, i){
-        if (this[flag]) ret.push(flag);
+        var val = this.reified = flags.reduce(function(ret, flag, i){
+          if (this[flag]) ret.push(flag);
         return ret;
       }.bind(this), []);
     } else {
@@ -888,9 +882,8 @@ Type(BitfieldType, {
   realign: function realign(offset){
     hidden.value = offset || 0;
     Object.defineProperty(this, 'offset', hidden);
-  }
+  },
 });
-
 
 
 
@@ -914,10 +907,10 @@ function reified(type, subject, size, values){
         return type;
       }
     }
-    if (typeof type === 'string' && subject.Class === 'Type') {
+    if (typeof type === 'string' && Class === 'Type') {
       return subject.rename(type);
     }
-    if (typeof subject === 'string' || subject.Class === 'Type') {
+    if (typeof subject === 'string' || Class === 'Type') {
       return new reified.ArrayType(type, subject, size);
     } else if (Array.isArray(subject) || typeof subject === 'number' || size) {
       return new reified.BitfieldType(type, subject, size);
@@ -946,11 +939,11 @@ Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
   configurable: true,
   get: function(){
-    return Buffer.prototype.endianness;
+    return DataBuffer.prototype.endianness;
   },
   set: function(v){
     if (v !== 'LE' && v !== 'BE') throw new Error('Endianness must be "BE" or "LE"');
-    Buffer.prototype.endianness = v;
+    DataBuffer.prototype.endianness = v;
   }
 });
 
@@ -962,9 +955,15 @@ Object.defineProperties(reified, {
   StructType:    D._CW(StructType),
   ArrayType:     D._CW(ArrayType),
   BitfieldType:  D._CW(BitfieldType),
-  Buffer:        D._CW(Buffer),
+  DataBuffer:    D._CW(DataBuffer),
   toString:      D._CW(function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' }),
 });
+
+
+
+
+
+
 
 
 
