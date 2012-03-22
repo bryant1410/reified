@@ -38,7 +38,7 @@ test('flags', function(t){
   var desc = new Desc({ HIDDEN: true });
   t.ok(desc, 'constructed');
   t.equal(desc.__proto__, Desc.prototype, 'instance inherits from ctor.prototype');
-  t.equal(JSON.stringify(desc.reify()), '{"ENUMERABLE":false,"CONFIGURABLE":true,"READONLY":true,"WRITABLE":true,"FROZEN":true,"HIDDEN":true,"NOTPRIVATE":true}', 'reifies to correct keys and values');
+  t.similar(desc.reify(), ["CONFIGURABLE","READONLY","WRITABLE","FROZEN","HIDDEN","NOTPRIVATE"], 'reifies to correct keys and values');
   t.equal(desc.buffer.length, 1, 'buffer is correct size');
   t.equal(desc.buffer[0], 6, 'buffer value matches given value');
 

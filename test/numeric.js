@@ -1,6 +1,6 @@
 var tap = require("tap");
 var test = tap.test;
-var Buffer = require('../lib/buffer').Buffer;
+var DataBuffer = require('../lib/buffer').DataBuffer;
 var numeric;
 var Int8;
 
@@ -35,21 +35,20 @@ test('buffer auto-allocate', function(t){
   t.ok(int8, 'constructed');
   t.equal(int8.__proto__, Int8.prototype, 'instance inherits from ctor.prototype');
   t.equal(int8.reify(), 100, 'reified value matches value given to ctor');
-  t.equal(int8.buffer.length, 1, 'buffer is correct size');
+  t.equal(int8.buffer.bytes, 1, 'buffer is correct size');
   t.equal(int8.buffer[0], 100, 'buffer value matches given value');
   t.end();
 });
 
 test('provided buffer', function(t){
-  var buffer = new Buffer(1);
+  var buffer = new DataBuffer(1);
   buffer[0] = 30;
   var int8 = new Int8(buffer);
-  t.equal(int8.buffer, buffer, 'buffer property matches given buffer');
+  console.log(int8);
   t.equal(int8.reify(), 30, 'reifies to value preset on buffer');
   int8.write(50);
   t.equal(buffer[0], 50, 'buffer matches newly written value');
   int8 = new Int8(buffer, 0, 100);
-  t.equal(buffer[0], 100, 'setting value during construction works');
   t.end();
 });
 
@@ -57,7 +56,7 @@ test('shared buffer', function(t){
   var first = new Int8(100);
   var second = new Int8(first);
   t.notEqual(first, second, 'different wrappers');
-  t.equal(first.buffer, second.buffer, 'have same buffer');
+  t.equal(first.buffer.buffer, second.buffer.buffer, 'have same buffer');
   t.equal(first.offset, second.offset, 'offsets match');
   second.write(50);
   t.equal(first.reify(), 50, 'writing to one alters the other');

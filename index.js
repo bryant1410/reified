@@ -1,6 +1,6 @@
 var genesis      = require('./lib/genesis');
 var D            = require('./lib/utility').desc;
-var Buffer       = require('./lib/buffer').Buffer;
+var DataBuffer       = require('./lib/buffer').DataBuffer;
 var NumericType  = require('./lib/numeric');
 var StructType   = require('./lib/struct');
 var ArrayType    = require('./lib/array');
@@ -57,11 +57,11 @@ Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
   configurable: true,
   get: function(){
-    return Buffer.prototype.endianness;
+    return DataBuffer.prototype.endianness;
   },
   set: function(v){
     if (v !== 'LE' && v !== 'BE') throw new Error('Endianness must be "BE" or "LE"');
-    Buffer.prototype.endianness = v;
+    DataBuffer.prototype.endianness = v;
   }
 });
 
@@ -73,6 +73,6 @@ Object.defineProperties(reified, {
   StructType:    D._CW(StructType),
   ArrayType:     D._CW(ArrayType),
   BitfieldType:  D._CW(BitfieldType),
-  Buffer:        D._CW(Buffer),
+  DataBuffer:    D._CW(DataBuffer),
   toString:      D._CW(function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' }),
 });

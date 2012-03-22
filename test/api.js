@@ -1,12 +1,12 @@
 var tap = require("tap");
 var test = tap.test;
-var Buffer = require('../lib/buffer').Buffer;
+var DataBuffer = require('../lib/buffer').DataBuffer;
 var reified;
 
 test('load', function(t){
   t.ok(reified = require('../'), 'reified loaded');
   t.similar(Object.keys(reified).sort(), ['data','defaultEndian','isData','isType'], 'reified has all expected enumerable names');
-  t.similar(Object.getOwnPropertyNames(reified).sort(), ['ArrayType','BitfieldType','Buffer','NumericType','StructType','Type', 'arguments','caller','data','defaultEndian','isData','isType','length','name','prototype'], 'reified has all expected names');
+  t.similar(Object.getOwnPropertyNames(reified).sort(), ['ArrayType','BitfieldType','DataBuffer','NumericType','StructType','Type', 'arguments','caller','data','defaultEndian','isData','isType','length','name','prototype'], 'reified has all expected names');
   t.end();
 });
 
@@ -37,7 +37,7 @@ test('reified as Data constructor', function(t){
   function OCT(n){ return [n,0,0,0] }
   var flatten = Function.call.bind([].concat, []);
   var buff = new Buffer(flatten(OCT(1), OCT(2), OCT(3), OCT(4)));
-  t.similar((new reified(Int32[2][2], buff)).reify(), [[1,2],[3,4]], 'Provided buffer reifies correctly');
+  t.similar((new reified(Int32[2][2], buff)).reify(), [[0,1],[2,3]], 'Provided buffer reifies correctly');
   t.end();
 });
 
@@ -45,3 +45,5 @@ test('reified as Data constructor', function(t){
 //`reified('Bits', 2)` - If the first parameter is a new name and the second parameter is a number a _‹BitfieldT›_ is created with the specified bytes.
 //`reified('Flags', [array of flags...], 2)` - If the second parameter is an array a _‹BitfieldT›_ is created, optionally with bytes specified.
 //`reified('FlagObject', { object of flags...}, 2)` - If the second parameter is a non-type object and the third is a number then a _‹BitfieldT›_ is created using the object as a flags object.
+
+
