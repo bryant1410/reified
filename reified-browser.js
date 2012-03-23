@@ -1,54 +1,636 @@
-!function(global, exporter, EventEmitter){
-"use strict";
+var reified = function(global, imports){
+!function(module, require){
+imports['events'] = {};
 
-var hasProto = !!Function.__proto__;
-var types = {};
-var nullable = { value: undefined, writable: true, configurable: true };
-var hidden = { configurable: true, writable: true, value: 0 };
-var numTypes = {
-     Int8: 1,
-    Uint8: 1,
-    Int16: 2,
-   Uint16: 2,
-    Int32: 4,
-   Uint32: 4,
-  Float32: 4,
-  Float64: 8
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['events'] },
+  set: function(v){ imports['events'] = v }
+});
+
+// (The MIT License)
+// Copyright (c) 2011 hij1nx http://www.twitter.com/hij1nx
+// See either the included license file for the full text or one the following
+//  https://github.com/Benvie/reified
+//   https://github.com/hij1nx/EventEmitter2
+
+module.exports.EventEmitter = EventEmitter;
+
+
+var isArray = Array.isArray ? Array.isArray : function _isArray(obj) {
+  return Object.prototype.toString.call(obj) === "[object Array]";
 };
+var defaultMaxListeners = 10;
 
-function isObject(o){ return Object(o) === o }
-function bits(n){ return Math.log(n) / Math.LN2 }
-function bytesFor(n){ return ((bits(n) / 8) | 0) + 1 }
-function toNum(n){ return isFinite(n) ? +n : 0 }
-function toNumOrUndef(n){ if (isFinite(n)) return +n }
-function toUint8(x) { return (x >>> 0) & 0xff }
-function max(arr){
-  if (Array.isArray(arr)) return arr.reduce(function(r,s){ return Math.max(s, r) }, 0);
-  else return Object.keys(arr).reduce(function(r,s){ return Math.max(arr[s], r) }, 0);
+function init() {
+  this._events = new Object;
 }
 
-function api(o, n, v){
-  if (Object(n) === n) {
-    Object.keys(n).forEach(function(k){
-      api(o, k, n[k]);
-    });
-  } else {
-    hidden.value = v;
-    Object.defineProperty(o, n, hidden);
+function configure(conf) {
+  if (conf) {
+    conf.delimiter && (this.delimiter = conf.delimiter);
+    conf.wildcard && (this.wildcard = conf.wildcard);
+    if (this.wildcard) {
+      this.listenerTree = new Object;
+    }
   }
 }
 
-function copy(from, to, hidden){
-  Object[hidden ? 'getOwnPropertyNames' : 'keys'](from).forEach(function(key){
+function EventEmitter(conf) {
+  this._events = new Object;
+  configure.call(this, conf);
+}
+
+//
+// Attention, function return type now is array, always !
+// It has zero elements if no any matches found and one or more
+// elements (leafs) if there are matches
+//
+function searchListenerTree(handlers, type, tree, i) {
+  if (!tree) {
+    return [];
+  }
+  var listeners=[], leaf, len, branch, xTree, xxTree, isolatedBranch, endReached,
+      typeLength = type.length, currentType = type[i], nextType = type[i+1];
+  if (i === typeLength && tree._listeners) {
+    //
+    // If at the end of the event(s) list and the tree has listeners
+    // invoke those listeners.
+    //
+    if (typeof tree._listeners === 'function') {
+      handlers && handlers.push(tree._listeners);
+      return [tree];
+    } else {
+      for (leaf = 0, len = tree._listeners.length; leaf < len; leaf++) {
+        handlers && handlers.push(tree._listeners[leaf]);
+      }
+      return [tree];
+    }
+  }
+
+  if ((currentType === '*' || currentType === '**') || tree[currentType]) {
+    //
+    // If the event emitted is '*' at this part
+    // or there is a concrete match at this patch
+    //
+    if (currentType === '*') {
+      for (branch in tree) {
+        if (branch !== '_listeners' && tree.hasOwnProperty(branch)) {
+          listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i+1));
+        }
+      }
+      return listeners;
+    } else if(currentType === '**') {
+      endReached = (i+1 === typeLength || (i+2 === typeLength && nextType === '*'));
+      if(endReached && tree._listeners) {
+        // The next element has a _listeners, add it to the handlers.
+        listeners = listeners.concat(searchListenerTree(handlers, type, tree, typeLength));
+      }
+
+      for (branch in tree) {
+        if (branch !== '_listeners' && tree.hasOwnProperty(branch)) {
+          if(branch === '*' || branch === '**') {
+            if(tree[branch]._listeners && !endReached) {
+              listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], typeLength));
+            }
+            listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i));
+          } else if(branch === nextType) {
+            listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i+2));
+          } else {
+            // No match on this one, shift into the tree but not in the type array.
+            listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i));
+          }
+        }
+      }
+      return listeners;
+    }
+
+    listeners = listeners.concat(searchListenerTree(handlers, type, tree[currentType], i+1));
+  }
+
+  xTree = tree['*'];
+  if (xTree) {
+    //
+    // If the listener tree will allow any match for this part,
+    // then recursively explore all branches of the tree
+    //
+    searchListenerTree(handlers, type, xTree, i+1);
+  }
+
+  xxTree = tree['**'];
+  if(xxTree) {
+    if(i < typeLength) {
+      if(xxTree._listeners) {
+        // If we have a listener on a '**', it will catch all, so add its handler.
+        searchListenerTree(handlers, type, xxTree, typeLength);
+      }
+
+      // Build arrays of matching next branches and others.
+      for(branch in xxTree) {
+        if(branch !== '_listeners' && xxTree.hasOwnProperty(branch)) {
+          if(branch === nextType) {
+            // We know the next element will match, so jump twice.
+            searchListenerTree(handlers, type, xxTree[branch], i+2);
+          } else if(branch === currentType) {
+            // Current node matches, move into the tree.
+            searchListenerTree(handlers, type, xxTree[branch], i+1);
+          } else {
+            isolatedBranch = {};
+            isolatedBranch[branch] = xxTree[branch];
+            searchListenerTree(handlers, type, { '**': isolatedBranch }, i+1);
+          }
+        }
+      }
+    } else if(xxTree._listeners) {
+      // We have reached the end and still on a '**'
+      searchListenerTree(handlers, type, xxTree, typeLength);
+    } else if(xxTree['*'] && xxTree['*']._listeners) {
+      searchListenerTree(handlers, type, xxTree['*'], typeLength);
+    }
+  }
+
+  return listeners;
+}
+
+function growListenerTree(type, listener) {
+
+  type = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+
+  //
+  // Looks for two consecutive '**', if so, don't add the event at all.
+  //
+  for(var i = 0, len = type.length; i+1 < len; i++) {
+    if(type[i] === '**' && type[i+1] === '**') {
+      return;
+    }
+  }
+
+  var tree = this.listenerTree;
+  var name = type.shift();
+
+  while (name) {
+
+    if (!tree[name]) {
+      tree[name] = new Object;
+    }
+
+    tree = tree[name];
+
+    if (type.length === 0) {
+
+      if (!tree._listeners) {
+        tree._listeners = listener;
+      }
+      else if(typeof tree._listeners === 'function') {
+        tree._listeners = [tree._listeners, listener];
+      }
+      else if (isArray(tree._listeners)) {
+
+        tree._listeners.push(listener);
+
+        if (!tree._listeners.warned) {
+
+          var m = defaultMaxListeners;
+
+          if (typeof this._events.maxListeners !== 'undefined') {
+            m = this._events.maxListeners;
+          }
+
+          if (m > 0 && tree._listeners.length > m) {
+
+            tree._listeners.warned = true;
+            console.error('(node) warning: possible EventEmitter memory ' +
+                          'leak detected. %d listeners added. ' +
+                          'Use emitter.setMaxListeners() to increase limit.',
+                          tree._listeners.length);
+            console.trace();
+          }
+        }
+      }
+      return true;
+    }
+    name = type.shift();
+  }
+  return true;
+};
+
+// By default EventEmitters will print a warning if more than
+// 10 listeners are added to it. This is a useful default which
+// helps finding memory leaks.
+//
+// Obviously not all Emitters should be limited to 10. This function allows
+// that to be increased. Set to zero for unlimited.
+
+EventEmitter.prototype.delimiter = '.';
+
+EventEmitter.prototype.setMaxListeners = function(n) {
+  this._events || init.call(this);
+  this._events.maxListeners = n;
+};
+
+EventEmitter.prototype.event = '';
+
+EventEmitter.prototype.once = function(event, fn) {
+  this.many(event, 1, fn);
+  return this;
+};
+
+EventEmitter.prototype.many = function(event, ttl, fn) {
+  var self = this;
+
+  if (typeof fn !== 'function') {
+    throw new Error('many only accepts instances of Function');
+  }
+
+  function listener() {
+    if (--ttl === 0) {
+      self.off(event, listener);
+    }
+    fn.apply(this, arguments);
+  };
+
+  listener._origin = fn;
+
+  this.on(event, listener);
+
+  return self;
+};
+
+EventEmitter.prototype.emit = function() {
+  this._events || init.call(this);
+
+  var type = arguments[0];
+
+  if (type === 'newListener') {
+    if (!this._events.newListener) { return false; }
+  }
+
+  // Loop through the *_all* functions and invoke them.
+  if (this._all) {
+    var l = arguments.length;
+    var args = new Array(l - 1);
+    for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
+    for (i = 0, l = this._all.length; i < l; i++) {
+      this.event = type;
+      this._all[i].apply(this, args);
+    }
+  }
+
+  // If there is no 'error' event listener then throw.
+  if (type === 'error') {
+    if (!this._all && !this._events.error && !(this.wildcard && this.listenerTree.error)) {
+      if (arguments[1] instanceof Error) {
+        throw arguments[1]; // Unhandled 'error' event
+      } else {
+        throw new Error("Uncaught, unspecified 'error' event.");
+      }
+    }
+  }
+
+  var handler;
+
+  if(this.wildcard) {
+    handler = [];
+    var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+    searchListenerTree.call(this, handler, ns, this.listenerTree, 0);
+  }
+  else {
+    handler = this._events[type];
+  }
+
+  if (typeof handler === 'function') {
+    this.event = type;
+    if (arguments.length === 1) {
+      handler.call(this);
+    }
+    else if (arguments.length > 1)
+      switch (arguments.length) {
+        case 2:
+          handler.call(this, arguments[1]);
+          break;
+        case 3:
+          handler.call(this, arguments[1], arguments[2]);
+          break;
+        // slower
+        default:
+          var l = arguments.length;
+          var args = new Array(l - 1);
+          for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
+          handler.apply(this, args);
+      }
+    return true;
+  }
+  else if (handler) {
+    var l = arguments.length;
+    var args = new Array(l - 1);
+    for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
+
+    var listeners = handler.slice();
+    for (var i = 0, l = listeners.length; i < l; i++) {
+      this.event = type;
+      listeners[i].apply(this, args);
+    }
+    return (listeners.length > 0) || this._all;
+  }
+  else {
+    return this._all;
+  }
+
+};
+
+EventEmitter.prototype.on = function(type, listener) {
+
+  if (typeof type === 'function') {
+    this.onAny(type);
+    return this;
+  }
+
+  if (typeof listener !== 'function') {
+    throw new Error('on only accepts instances of Function');
+  }
+  this._events || init.call(this);
+
+  // To avoid recursion in the case that type == "newListeners"! Before
+  // adding it to the listeners, first emit "newListeners".
+  this.emit('newListener', type, listener);
+
+  if(this.wildcard) {
+    growListenerTree.call(this, type, listener);
+    return this;
+  }
+
+  if (!this._events[type]) {
+    // Optimize the case of one listener. Don't need the extra array object.
+    this._events[type] = listener;
+  }
+  else if(typeof this._events[type] === 'function') {
+    // Adding the second element, need to change to array.
+    this._events[type] = [this._events[type], listener];
+  }
+  else if (isArray(this._events[type])) {
+    // If we've already got an array, just append.
+    this._events[type].push(listener);
+
+    // Check for listener leak
+    if (!this._events[type].warned) {
+
+      var m = defaultMaxListeners;
+
+      if (typeof this._events.maxListeners !== 'undefined') {
+        m = this._events.maxListeners;
+      }
+
+      if (m > 0 && this._events[type].length > m) {
+
+        this._events[type].warned = true;
+        console.error('(node) warning: possible EventEmitter memory ' +
+                      'leak detected. %d listeners added. ' +
+                      'Use emitter.setMaxListeners() to increase limit.',
+                      this._events[type].length);
+        console.trace();
+      }
+    }
+  }
+  return this;
+};
+
+EventEmitter.prototype.onAny = function(fn) {
+
+  if(!this._all) {
+    this._all = [];
+  }
+
+  if (typeof fn !== 'function') {
+    throw new Error('onAny only accepts instances of Function');
+  }
+
+  // Add the function to the event listener collection.
+  this._all.push(fn);
+  return this;
+};
+
+EventEmitter.prototype.addListener = EventEmitter.prototype.on;
+
+EventEmitter.prototype.off = function(type, listener) {
+  if (typeof listener !== 'function') {
+    throw new Error('removeListener only takes instances of Function');
+  }
+
+  var handlers,leafs=[];
+
+  if(this.wildcard) {
+    var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+    leafs = searchListenerTree.call(this, null, ns, this.listenerTree, 0);
+  }
+  else {
+    // does not use listeners(), so no side effect of creating _events[type]
+    if (!this._events[type]) return this;
+    handlers = this._events[type];
+    leafs.push({_listeners:handlers});
+  }
+
+  for (var iLeaf=0; iLeaf<leafs.length; iLeaf++) {
+    var leaf = leafs[iLeaf];
+    handlers = leaf._listeners;
+    if (isArray(handlers)) {
+
+      var position = -1;
+
+      for (var i = 0, length = handlers.length; i < length; i++) {
+        if (handlers[i] === listener ||
+          (handlers[i].listener && handlers[i].listener === listener) ||
+          (handlers[i]._origin && handlers[i]._origin === listener)) {
+          position = i;
+          break;
+        }
+      }
+
+      if (position < 0) {
+        return this;
+      }
+
+      if(this.wildcard) {
+        leaf._listeners.splice(position, 1)
+      }
+      else {
+        this._events[type].splice(position, 1);
+      }
+
+      if (handlers.length === 0) {
+        if(this.wildcard) {
+          delete leaf._listeners;
+        }
+        else {
+          delete this._events[type];
+        }
+      }
+    }
+    else if (handlers === listener ||
+      (handlers.listener && handlers.listener === listener) ||
+      (handlers._origin && handlers._origin === listener)) {
+      if(this.wildcard) {
+        delete leaf._listeners;
+      }
+      else {
+        delete this._events[type];
+      }
+    }
+  }
+
+  return this;
+};
+
+EventEmitter.prototype.offAny = function(fn) {
+  var i = 0, l = 0, fns;
+  if (fn && this._all && this._all.length > 0) {
+    fns = this._all;
+    for(i = 0, l = fns.length; i < l; i++) {
+      if(fn === fns[i]) {
+        fns.splice(i, 1);
+        return this;
+      }
+    }
+  } else {
+    this._all = [];
+  }
+  return this;
+};
+
+EventEmitter.prototype.removeListener = EventEmitter.prototype.off;
+
+EventEmitter.prototype.removeAllListeners = function(type) {
+  if (arguments.length === 0) {
+    !this._events || init.call(this);
+    return this;
+  }
+
+  if(this.wildcard) {
+    var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+    var leafs = searchListenerTree.call(this, null, ns, this.listenerTree, 0);
+
+    for (var iLeaf=0; iLeaf<leafs.length; iLeaf++) {
+      var leaf = leafs[iLeaf];
+      leaf._listeners = null;
+    }
+  }
+  else {
+    if (!this._events[type]) return this;
+    this._events[type] = null;
+  }
+  return this;
+};
+
+EventEmitter.prototype.listeners = function(type) {
+  if(this.wildcard) {
+    var handlers = [];
+    var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
+    searchListenerTree.call(this, handlers, ns, this.listenerTree, 0);
+    return handlers;
+  }
+
+  this._events || init.call(this);
+
+  if (!this._events[type]) this._events[type] = [];
+  if (!isArray(this._events[type])) {
+    this._events[type] = [this._events[type]];
+  }
+  return this._events[type];
+};
+
+EventEmitter.prototype.listenersAny = function() {
+
+  if(this._all) {
+    return this._all;
+  }
+  else {
+    return [];
+  }
+
+};
+
+
+}({}, function(n){ return imports[n] });
+
+
+!function(module, require){
+imports['./utility'] = {};
+
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./utility'] },
+  set: function(v){ imports['./utility'] = v }
+});
+
+"use strict";
+
+module.exports = {
+  isObject: isObject,
+  bytes: bytes,
+  bits: bits,
+  indent: indent,
+  pad: pad,
+  maxLength: maxLength,
+  unique: unique,
+  strlen: strlen
+};
+
+function isObject(o){ return Object(o) === o }
+
+function bits(n){ return Math.log(n) / Math.LN2 }
+function bytes(n){ return ((bits(n) / 8) | 0) + 1 }
+
+function indent(str, amount){
+  var space = Array((amount||2)+1).join(' ');
+  return str.split('\n').map(function(line){ return space+line }).join('\n');
+}
+
+function pad(str, len){
+  len -= strlen(str||'') + 1;
+  return str + Array(len > 1 ? len : 1).join(' ');
+}
+
+function strlen(str){
+  return str.replace(/\033\[(?:\d+;)*\d+m/g, '').length;
+}
+
+function maxLength(array){
+  if (!Array.isArray(array)) {
+    if (!isObject(array)) throw new TypeError('Max length called on non-object ' + array);
+    array = Object.keys(array);
+  }
+  return array.reduce(function(max, item){ return Math.max(max, strlen(''+item)) }, 0);
+}
+
+function unique(a){
+  return Object.keys(a.reduce(function(r,s){ return r[s]=1,r },{}));
+}
+
+}({}, function(n){ return imports[n] });
+
+
+!function(module, require){
+imports['./buffer'] = {};
+
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./buffer'] },
+  set: function(v){ imports['./buffer'] = v }
+});
+
+"use strict";
+
+
+module.exports = DataBuffer;
+
+var types = ['Int8', 'Int16', 'Int32', 'Uint8', 'Uint16', 'Uint32', 'Float32', 'Float64'];
+
+function bits(n){ return Math.log(n) / Math.LN2 }
+function bytesFor(n){ return ((bits(n) / 8) | 0) + 1 }
+
+function copy(to, from){
+  Object.keys(from).forEach(function(key){
     var desc = Object.getOwnPropertyDescriptor(from, key);
-    desc.enumerable = false;
     Object.defineProperty(to, key, desc);
   });
   return to;
 }
-
-
-var types = ['Int8', 'Int16', 'Int32', 'Uint8', 'Uint16', 'Uint32', 'Float32', 'Float64'];
 
 
 if (typeof Buffer !== 'function'){
@@ -64,11 +646,12 @@ if (typeof Buffer !== 'function'){
 var ArrayBuffers = { ArrayBuffer:  ArrayBuffer };
 
 function isArrayBuffer(o){
-  return !!(o && o.constructor && o.constructor.name in ArrayBuffers);
+  return o instanceof ArrayBuffer || !!(o && o.constructor && o.constructor.name in ArrayBuffers);
 }
 
 
 function DataBuffer(subject, offset, length){
+  if (!DataBuffer.prototype.isPrototypeOf(this)) return new DataBuffer(subject, offset, length);
   if (!subject) throw new Error('Tried to initialize with no usable length or subject');
   if (isArrayBuffer(subject)) {
     this.array = subject;
@@ -82,19 +665,26 @@ function DataBuffer(subject, offset, length){
   } else if (Buffer.isBuffer(subject)) {
     this.view = new DataView(subject, offset, length);
   } else if (subject instanceof DataView) {
-    this.view = (offset || length) ? new DataView(subject, offset || 0, length) :  new DataView(subject);
+    offset = offset || subject.byteOffset;
+    length = offset || subject.byteLength;
+    this.view = new DataView(subject.buffer, offset, length);
+  } else if (DataBuffer.isDataBuffer(subject)) {
+    this.view = new DataView(subject.buffer, subject.offset + offset, length || subject.length);
   }
-  this.length = this.bytes = this.view.byteLength;
+  this.length = this.view.byteLength;
   this.buffer = this.view.buffer;
   this.offset = this.view.byteOffset;
 }
 
-DataBuffer.isBuffer = function isBuffer(o){ return DataBuffer.prototype.isPrototypeOf(o) }
+DataBuffer.isDataBuffer = function isDataBuffer(o){ return DataBuffer.prototype.isPrototypeOf(o) }
 
+function toNum(n){ return isFinite(n) ? +n : 0 }
+function toNumOrUndef(n){ if (isFinite(n)) return +n }
+function toUint8(x) { return (x >>> 0) & 0xff }
 
 DataBuffer.prototype = {
   constructor: DataBuffer,
-  endianness: 'BE',
+  endianness: 'LE',
   subarray: function(start, end){
     start = toNum(start);
     end = toNumOrUndef(end - start);
@@ -102,10 +692,10 @@ DataBuffer.prototype = {
   },
   typed: function(type, offset, length){
     type = ArrayBuffers[type+'Array'];
-    var maxLength = this.bytes / type.BYTES_PER_ELEMENT | 0;
+    var maxLength = this.length / type.BYTES_PER_ELEMENT | 0;
     offset = toNum(offset);
     length = toNum(length) || maxLength - offset;
-    return new type(this.buffer, offset, length)
+    return new type(this.view, offset, length)
   },
   copy: function(target, targetOffset, start, end){
     if (isFinite(target)) {
@@ -114,47 +704,79 @@ DataBuffer.prototype = {
     }
     targetOffset = toNum(targetOffset);
     start = toNum(start);
-    end = toNum(end) || this.bytes - start;
+    end = end ? +end : this.length - 1;
     if (start > end) throw new Error('End less than start');
     if (start < 0) throw new RangeError('Start less than zero');
-    if (end > this.bytes) throw new RangeError('End outside buffer');
+    if (end >= this.length) throw new RangeError('End outside buffer');
     var length = end - start;
     if (!target) {
       target = new Buffer(length);
-    } else {
-      if (target.length < length) length = target.length;
+    } else if (targetOffset + length > target.length) {
+      length = target.length;
     }
 
-    var buffer = new DataBuffer(target, targetOffset, length);
-    var source = this.subarray(start, end);
+    target = new DataBuffer(target, targetOffset, length).typed('Uint8');
+    var source = this.subarray(start, end).typed('Uint8');
     for (var i=0; i<length; i++) {
-      buffer.writeUint8(i, source.readUint8(i));
+      target[i] = source[i];
     }
-    return buffer;
+    return target;
   },
   clone: function(){
-    var buffer = new DataBuffer(this.s);
-    for (var i=0; i<this.s-1; i++) {
+    var buffer = new DataBuffer(new Buffer(this.length));
+    for (var i=0; i<this.length; i++) {
       buffer.writeUint8(i, this.readUint8(i));
     }
     return buffer;
   },
   fill: function(v){
     v = toNum(v);
-    var buff = new Uint8Array(this.buffer);
-    for (var i=0; i < this.s; i++) {
+    var buff = new Uint8Array(this.view);
+    for (var i=0; i < this.length; i++) {
       buff[i] = v;
     }
   },
+  map: function(){
+    return [].map.apply(this.typed('Uint8'), arguments);
+  },
+  slice: function(offset, length, encoding){
+    offset = toNum(offset);
+    var end = isFinite(length) ? toNum(length) + offset : this.length - offset;
+    return this.subarray(offset, end).toString(encoding || 'ascii');
+  },
+  // inspect: function(){
+  //   return '<DataBuffer '+this.length+'b>';
+  // },
+  toArray: function(type){
+    type = type || 'Uint8';
+    return [].map.call(this.typed(type), function(x){ return x });
+  },
+  toString: function(encoding){
+    switch (encoding) {
+      case 'ascii':
+        return this.map(function(val){
+          return String.fromCharCode(val);
+        }).join('');
+      default:
+        return this.map(function(v){
+          return ('000'+v.toString(10)).slice(-3)
+        })
+          .join(' ')
+          .split(/((?:\d\d\d ?){10}(?: ))/)
+          .filter(Boolean)
+          .map(Function.call.bind(''.trim))
+          .join('\n')
+    }
+  }
 }
 
 types.forEach(function(type){
   ArrayBuffers[type+'Array'] = global[type+'Array'];
   DataBuffer.prototype['read'+type] = function(offset){
-    return this.view['get'+type](toNum(offset), this.endianness === 'BE');
+    return this.view['get'+type](toNum(offset), this.endianness !== 'BE');
   }
   DataBuffer.prototype['write'+type] = function(offset, value){
-    return this.view['set'+type](toNum(offset), toNum(value), this.endianness === 'BE');
+    return this.view['set'+type](toNum(offset), toNum(value), this.endianness !== 'BE');
   }
 });
 
@@ -168,16 +790,57 @@ Array.apply(null, Array(20)).forEach(function(n, index){
 });
 
 
+}({}, function(n){ return imports[n] });
 
 
+!function(module, require){
+imports['./genesis'] = {};
+
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./genesis'] },
+  set: function(v){ imports['./genesis'] = v }
+});
+
+"use strict";
+
+var DataBuffer  = require('./buffer');
+var utility    = require('./utility');
+var isObject   = utility.isObject;
+var EventEmitter = require('events').EventEmitter;
+
+var hasProto = !!Function.__proto__;
+var types = {};
 
 
+module.exports = {
+  Type: Type,
+  Subtype: Subtype,
+  lookupType: lookupType,
+  registerType: registerType,
+  types: types,
+  isBuffer: function(o){
+    return Buffer.isBuffer(o) || DataBuffer.isDataBuffer(o);
+  },
+  api: api,
+  nullable: function(object, key){
+    Object.defineProperty(object, key, nullable);
+    delete object[key];
+  }
+};
 
+var nullable = { value: undefined, writable: true, configurable: true };
+var hidden = { configurable: true, writable: true, value: 0 };
 
-
-
-
-
+function api(o, n, v){
+  if (Object(n) === n) {
+    Object.keys(n).forEach(function(k){
+      api(o, k, n[k]);
+    });
+  } else {
+    hidden.value = v;
+    Object.defineProperty(o, n, hidden);
+  }
+}
 
 function registerType(name, type){
   if (name in types) return types[name];
@@ -190,6 +853,7 @@ function lookupType(name, label){
     if (name[name.length-1] === ']') {
       var count = name.match(/(.*)\[(\d+)\]$/);
       if (count) {
+        var ArrayType = require('./array');
         name = count[1];
         count = +count[2];
         if (typeof label === 'string') {
@@ -212,9 +876,6 @@ function lookupType(name, label){
 }
 
 
-
-
-
 // ########################
 // ### Genesis for Type ###
 // ########################
@@ -227,17 +888,20 @@ function Type(ctor, proto){
     copy(Type, ctor.prototype);
   }
   ctor.prototype.Type = ctor.name;
-  ctor.prototype.constructor = ctor,
+  ctor.prototype.constructor = ctor;
+  if (typeof imports === 'undefined') {
+    ctor.prototype.inspect = require('./inspect')('Type', ctor.name);
+    proto.inspect = require('./inspect')('Data', ctor.name);
+  }
   ctor.prototype.prototype = copy(proto, Object.create(Data));
-  ctor.toString = function(){ return '◀ '+ctor.name+' ▶' }
 }
 
-
-
-Type.Class = 'Type';
-Type.array = function array(n){ return new ArrayType(this, n) }
-Type.isInstance = function isInstance(o){ return this.prototype.isPrototypeOf(o) }
-
+copy({
+  Class: 'Type',
+  toString: function toString(){ return '[object '+this.name+'Type]' },
+  array: function array(n){ return new (require('./array'))(this, n) },
+  isInstance: function isInstance(o){ return this.prototype.isPrototypeOf(o) },
+}, Type);
 
 Array.apply(null, Array(20)).forEach(function(n, i){
   Object.defineProperty(Type, i, {
@@ -246,11 +910,8 @@ Array.apply(null, Array(20)).forEach(function(n, i){
   });
 });
 
-
-
-
 function createInterface(type, name, ctor){
-  var iface = Function(name+'Constructor', 'return function '+name+'(buffer, offset, values){ return new '+name+'Constructor(buffer, offset, values) }')(ctor);
+  var iface = Function(name+'Constructor', 'return function '+name+'(data, offset, values){ return new '+name+'Constructor(data, offset, values) }')(ctor);
 
   hidden.value = function rename(name){
     return ctor.prototype.constructor = createInterface(type, name, ctor);
@@ -265,12 +926,9 @@ function createInterface(type, name, ctor){
 
   iface.prototype = ctor.prototype;
 
-  iface.toString = function(){ return '‹' + name + '› <'+this.bytes+'b>'  }
-
   if (name) registerType(name, iface);
   return copy(ctor, iface);
 }
-
 
 function Subtype(name, bytes, ctor){
   ctor.bytes = bytes;
@@ -280,9 +938,6 @@ function Subtype(name, bytes, ctor){
 }
 
 
-
-
-
 // ########################
 // ### Genesis for Data ###
 // ########################
@@ -290,49 +945,88 @@ function Subtype(name, bytes, ctor){
 var Data = Type.prototype = {
   __proto__: EventEmitter.prototype,
   Class: 'Data',
-  rebase: function rebase(buffer){
-    if (buffer == null) {
-      buffer = new DataBuffer(this.bytes);
-      buffer.fill(0);
+  toString: function toString(){ return '[object '+this.constructor.name+'Data]' },
+  rebase: function rebase(data){
+    if (data == null) {
+      data = new DataBuffer(this.bytes);
+      data.fill(0);
+    } else if (data._data) {
+      data = new DataBuffer(data._data);
     } else {
-      buffer = new DataBuffer(buffer);
+      data = new DataBuffer(data);
     }
-    hidden.value = buffer;
-    Object.defineProperty(this, 'buffer', hidden);
+    api(this, '_data', data);
+  },
+  realign: function realign(offset){
+    api(this, '_offset', offset || 0);
   },
   clone: function clone(){
-    return new this.constructor(this.buffer, this.offset);
+    return new this.constructor(this._data, this._offset);
   },
-  toString: function toString(){ return '<' + this.constructor.name + '> ('+this.bytes+'b)' },
-  copy: function copy(buffer, offset){
-    var copied = new this.constructor(buffer, offset);
-    this.buffer.copy(copied.buffer, copied.offset, this.offset, this.offset + this.bytes);
-    return copied;
+  copy: function copy(data, offset){
+    return new this.constructor(this._data.clone());
   },
   cast: function cast(type, align){
     if (typeof (type = lookupType(type)) === 'string') throw new TypeError('Unknown type "'+type+'"');
     if (type.bytes < this.bytes) throw new RangeError('Tried to cast to a smaller size "'+type.name+'"');
-    if (this.buffer.length < type.bytes) throw new RangeError('Type is bigger than this buffer: "'+type.name+'"');
+    if (this._data.length < type.bytes) throw new RangeError('Type is bigger than this buffer: "'+type.name+'"');
     align = (type.bytes === this.bytes || !align) ? 0 : align < 0 ? this.bytes-type.bytes : +align;
-    return new type(this.buffer, this.offset + align);
+    return new type(this._data, this._offset + align);
   }
 };
 
 
-// #################################################
-// ###               NumericTypes                ###
-// #################################################
+function copy(from, to, hidden){
+  Object[hidden ? 'getOwnPropertyNames' : 'keys'](from).forEach(function(key){
+    var desc = Object.getOwnPropertyDescriptor(from, key);
+    desc.enumerable = false;
+    Object.defineProperty(to, key, desc);
+  });
+  return to;
+}
 
 
-var NumericSubtype = Subtype.bind(NumericType);
+}({}, function(n){ return imports[n] });
 
 
-/** * Coerce to number when appropriate and verify number against type storage */
+!function(module, require){
+imports['./numeric'] = {};
+
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./numeric'] },
+  set: function(v){ imports['./numeric'] = v }
+});
+
+"use strict";
+
+var bits         = require('./utility').bits;
+var genesis      = require('./genesis');
+var NumericSubtype = genesis.Subtype.bind(NumericType);
+
+
+module.exports = NumericType;
+
+
+var types = {
+     Int8: 1,
+    Uint8: 1,
+    Int16: 2,
+   Uint16: 2,
+    Int32: 4,
+   Uint32: 4,
+  Float32: 4,
+  Float64: 8
+};
+
+
+/**
+ * Coerce to number when appropriate and verify number against type storage
+ */
 function checkType(type, val){
   if (val && val.DataType) {
     if (val.DataType === 'numeric' && val.Subtype === 'Int64' || val.Subtype === 'Uint64') {
       if (type === 'Int64' || type === 'Uint64') {
-        return val;
+        return val._data;
       } else {
         throw new RangeError(val + ' exceeds '+type+' capacity');
       }
@@ -360,9 +1054,6 @@ function checkType(type, val){
 
 
 
-
-
-
 // ###############################
 // ### NumericType Constructor ###
 // ###############################
@@ -373,12 +1064,12 @@ function NumericType(name, bytes){
   // ### NumericT Constructor ###
   // ############################
 
-  function NumericT(buffer, offset, value){
-    if (typeof buffer === 'number' || !buffer) {
-      value = buffer;
-      buffer = null;
+  function NumericT(data, offset, value){
+    if (typeof data === 'number' || !data) {
+      value = data;
+      data = null;
     }
-    this.rebase(buffer);
+    this.rebase(data);
     this.realign(offset);
 
     if (value != null) {
@@ -394,13 +1085,14 @@ function NumericType(name, bytes){
   NumericT.prototype = {
     Subtype: name,
     write: function write(v){
-      this.buffer['write'+name](this.offset, checkType(name, v));
+      this._data['write'+name](this._offset, checkType(name, v));
       return this;
     },
     reify: function reify(deallocate){
-      var val = this.reified = this.buffer['read'+name](this.offset);
+      var val = this.reified = this._data['read'+name](this._offset);
       this.emit('reify', val);
       val = this.reified;
+      delete this.reified;
       return val;
     },
   };
@@ -409,189 +1101,38 @@ function NumericType(name, bytes){
 }
 
 
-
 // ########################
 // ### NumericType Data ###
 // ########################
 
-Type(NumericType, {
+genesis.Type(NumericType, {
   DataType: 'numeric',
   fill: function fill(v){ this.write(0, v || 0) },
-  realign: function realign(offset){
-    api(this, 'offset', offset | 0);
-  },
 });
 
 
-Object.keys(numTypes).forEach(function(name){
-  NumericType[name] = new NumericType(name, numTypes[name]);
+Object.keys(types).forEach(function(name){
+  NumericType[name] = new NumericType(name, types[name]);
 });
 
 
-// ###############################################
-// ###               ArrayTypes                ###
-// ###############################################
-
-var ArraySubtype = Subtype.bind(ArrayType);
+}({}, function(n){ return imports[n] });
 
 
+!function(module, require){
+imports['./struct'] = {};
 
-// #############################
-// ### ArrayType Constructor ###
-// #############################
-
-function ArrayType(name, MemberType, length) {
-  if (typeof name !== 'string' || typeof MemberType === 'number') {
-    length = MemberType || 0;
-    MemberType = lookupType(name);
-    name = MemberType.name + 'x'+length;
-  } else {
-    MemberType = lookupType(MemberType);
-  }
-  if (lookupType(name) !== name) return lookupType(name);
-  var bytes = MemberType.bytes * length;
-
-  // ##########################
-  // ### ArrayT Constructor ###
-  // ##########################
-
-  function ArrayT(buffer, offset, values){
-    if (!
-      ViewBuffer.isBuffer(buffer)) {
-      values = buffer;
-      buffer = null;
-    }
-    this.rebase(buffer);
-    api(this, 'offset', offset | 0);
-
-    values && Object.keys(values).forEach(function(i){
-      initIndex(this, MemberType, i).write(values[i]);
-    }, this);
-    this.emit('construct');
-  }
-
-  ArrayT.memberType = MemberType;
-  ArrayT.count = length;
-  ArrayT.prototype.length = length;
-
-  return defineIndices(ArraySubtype(name, bytes, ArrayT));
-}
-
-function defineIndices(target){
-  Array.apply(null, Array(target.count)).forEach(function(n, index){
-    Object.defineProperty(target.prototype, index, {
-      enumerable: true,
-      configurable: true,
-      get: function(){ return initIndex(this, target.memberType, index) },
-      set: function(v){ initIndex(this, target.memberType, index).write(v) }
-    });
-  });
-  return target;
-}
-
-// ######################
-// ### ArrayType Data ###
-// ######################
-
-Type(ArrayType, {
-  DataType: 'array',
-  forEach: Array.prototype.forEach,
-  reduce: Array.prototype.reduce,
-  map: Array.prototype.map,
-
-  reify: function reify(deallocate){
-    var output = this.reified = [];
-    for (var i=0; i < this.length; i++) {
-      output[i] = this[i].reify(deallocate);
-      if (deallocate) this[i] = null;
-    }
-    this.emit('reify', output);
-    output = this.reified;
-    delete this.reified;
-    return output;
-  },
-
-  copy: function copy(buffer, offset){
-    var copied = new this.constructor(buffer, offset);
-    this.buffer.copy(copied.buffer, copied.offset, this.offset, this.offset + this.bytes);
-    return copied;
-  },
-
-  write: function write(value, index, offset){
-    if (value == null) throw new TypeError('Tried to write nothing');
-
-    if (isFinite(index)) {
-      // we have an index
-      if (!isFinie(offset)) {
-        // and no offset so it's going in
-        return this[index] = value;
-      } else {
-        offset = +offset;
-      }
-      index = +index;
-    } else {
-      // prep for arrayish value
-      index = 0;
-      offset = +offset || 0;
-    }
-
-    // reify if needed, direct buffer copying doesn't happen here
-    if (value.reify) value = value.reify();
-
-    if (Array.isArray(value) || Object(value) === value && 'length' in value) {
-      // arrayish and offset + index are already good to go
-      while (index < this.length && offset < value.length) {
-        var current = value[offset++];
-        if (current != null) {
-          this[index++] = current.reify ? current.reify() : current;
-        } else if (current === null) {
-          this[index++] = null;
-        }
-      }
-    } else {
-      // last ditch, something will throw an error if this isn't an acceptable type
-      this[index] = offset ? value[offset] : value;
-    }
-  },
-
-  fill: function fill(val){
-    val = val || 0;
-    for (var i=0; i < this.length; i++) {
-      this[i] = val;
-    }
-  },
-
-  realign: function realign(offset, deallocate){
-    api(this, 'offset', +offset || 0);
-    // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
-    Object.keys(this).forEach(function(i){
-      if (isFinite(i)) {
-        if (deallocate) this[i] = null;
-        else this[i].realign(offset);
-      }
-    }, this);
-  },
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./struct'] },
+  set: function(v){ imports['./struct'] = v }
 });
 
+"use strict";
+var isObject      = require('./utility').isObject;
+var genesis       = require('./genesis');
+var StructSubtype = genesis.Subtype.bind(StructType);
 
-NumericType.Uint64 = new ArrayType('Uint64', 'Uint32', 2);
-NumericType.Int64 = new ArrayType('Int64', 'Int32', 2);
-
-var OctetString = new ArrayType('EightByteOctetString', 'Uint8', 8);
-
-function octets(){ return new OctetString(this.buffer, this.offset) }
-NumericType.Uint64.prototype.octets = octets;
-NumericType.Int64.prototype.octets = octets;
-
-
-
-
-// ###############################################
-// ###               StructTypes               ###
-// ###############################################
-
-var StructSubtype = Subtype.bind(StructType);
-
+module.exports = StructType;
 
 
 // ##############################
@@ -609,7 +1150,7 @@ function StructType(name, fields){
   var names = [];
 
   fields = Object.keys(fields).reduce(function(ret, name){
-    ret[name] = lookupType(fields[name]);
+    ret[name] = genesis.lookupType(fields[name]);
     names.push(name);
     offsets[name] = bytes;
     bytes += ret[name].bytes;
@@ -620,12 +1161,12 @@ function StructType(name, fields){
   // ### StructT Constructor ###
   // ###########################
 
-  function StructT(buffer, offset, values){
-    if (!isBuffer(buffer)) {
-      values = buffer;
-      buffer = null;
+  function StructT(data, offset, values){
+    if (!genesis.isBuffer(data)) {
+      values = data;
+      data = null;
     }
-    this.rebase(buffer);
+    this.rebase(data);
     this.realign(offset);
 
     if (values) {
@@ -644,19 +1185,16 @@ function StructType(name, fields){
   return defineFields(StructSubtype(name, bytes, StructT));
 }
 
-
 function initField(target, ctor, field){
-  var block = new ctor.fields[field](target.buffer, target.offset + ctor.offsets[field]) ;
+  var block = new ctor.fields[field](target._data, target._offset + ctor.offsets[field]) ;
   Object.defineProperty(target, field, {
     enumerable: true,
     configurable: true,
     get: function(){ return block },
     set: function(v){
       if (v === null) {
-        // take null to mean full deallocate
         this.emit('deallocate', field);
-        Object.defineProperty(this, field, nullable);
-        delete this[field];
+        genesis.nullable(this, field);
         block = null;
       } else {
         block.write(v);
@@ -682,7 +1220,7 @@ function defineFields(target){
 // ### StructType Data ###
 // #######################
 
-Type(StructType, {
+genesis.Type(StructType, {
   DataType: 'struct',
 
   reify: function reify(deallocate){
@@ -712,7 +1250,8 @@ Type(StructType, {
   },
 
   realign: function realign(offset, deallocate){
-    api(this, 'offset', +offset || 0);
+    genesis.api(this, '_offset', offset || 0);
+    // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
     Object.keys(this).forEach(function(field){
       if (deallocate) this[field] = null;
       else this[field].realign(offset);
@@ -728,13 +1267,190 @@ Type(StructType, {
 });
 
 
-// ##############################################
-// ###              BitfieldTypes             ###
-// ##############################################
+}({}, function(n){ return imports[n] });
+
+
+!function(module, require){
+imports['./array'] = {};
+
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./array'] },
+  set: function(v){ imports['./array'] = v }
+});
+
+"use strict";
+var genesis = require('./genesis');
+var ArraySubtype = genesis.Subtype.bind(ArrayType);
+
+module.exports = ArrayType;
+
+// #############################
+// ### ArrayType Constructor ###
+// #############################
+
+function ArrayType(name, MemberType, length) {
+  if (typeof name !== 'string' || typeof MemberType === 'number') {
+    length = MemberType || 0;
+    MemberType = genesis.lookupType(name);
+    name = MemberType.name + 'x'+length;
+  } else {
+    MemberType = genesis.lookupType(MemberType);
+  }
+  if (genesis.lookupType(name) !== name) return genesis.lookupType(name);
+  var bytes = MemberType.bytes * length;
+
+  // ##########################
+  // ### ArrayT Constructor ###
+  // ##########################
+
+  function ArrayT(data, offset, values){
+    if (!genesis.isBuffer(data)) {
+      values = data;
+      data = null;
+    }
+    this.rebase(data);
+    genesis.api(this, '_offset', offset || 0);
+
+    values && Object.keys(values).forEach(function(i){
+      initIndex(this, MemberType, i).write(values[i]);
+    }, this);
+    this.emit('construct');
+  }
+
+  ArrayT.memberType = MemberType;
+  ArrayT.count = length;
+  ArrayT.prototype.length = length;
+
+  return defineIndices(ArraySubtype(name, bytes, ArrayT));
+}
+
+
+function initIndex(target, MemberType, index){
+  var block = new MemberType(target._data, target._offset + index * MemberType.bytes);
+  Object.defineProperty(target, index, {
+    enumerable: true,
+    configurable: true,
+    get: function(){ return block },
+    set: function(v){
+      if (v === null) {
+        this.emit('deallocate', index);
+        genesis.nullable(this, index);
+        block = null;
+      } else {
+        block.write(v)
+      }
+    }
+  });
+  return block;
+}
+
+function defineIndices(target){
+  Array.apply(null, Array(target.count)).forEach(function(n, index){
+    Object.defineProperty(target.prototype, index, {
+      enumerable: true,
+      configurable: true,
+      get: function(){ return initIndex(this, target.memberType, index) },
+      set: function(v){ initIndex(this, target.memberType, index).write(v) }
+    });
+  });
+  return target;
+}
+
+// ######################
+// ### ArrayType Data ###
+// ######################
+
+genesis.Type(ArrayType, {
+  DataType: 'array',
+  forEach: Array.prototype.forEach,
+  reduce: Array.prototype.reduce,
+  map: Array.prototype.map,
+
+  reify: function reify(deallocate){
+    this.reified = [];
+    for (var i=0; i < this.length; i++) {
+       this.reified[i] = this[i].reify(deallocate);
+      if (deallocate) this[i] = null;
+    }
+    this.emit('reify', this.reified);
+    var output = this.reified;
+    delete this.reified;
+    return output;
+  },
+
+  write: function write(value, index, offset){
+    if (value == null) throw new TypeError('Tried to write nothing');
+
+    if (isFinite(index) && typeof offset === 'undefined') {
+      // writing to specific index
+      return this[index] = value;
+    }
+
+    index = +index || 0;
+    offset = +offset || 0;
+
+    // reify if needed, direct buffer copying doesn't happen here
+    value = value.reify ? value.reify() : value;
+
+    if (Array.isArray(value) || Object(value) === value && 'length' in value) {
+      // arrayish and offset + index are already good to go
+      for (var index; index < this.length && index+offset < value.length; index++) {
+        if (value[offset+index] === null) {
+          this[index] = null;
+        } else {
+          this[index] = value[offset+index];
+        }
+      }
+    } else {
+      // last ditch, something will throw an error if this isn't an acceptable type
+      this[index] = offset ? value[offset] : value;
+    }
+  },
+
+  fill: function fill(val){
+    val = val || 0;
+    for (var i=0; i < this.length; i++) {
+      this[i] = val;
+    }
+  },
+
+  realign: function realign(offset, deallocate){
+
+    genesis.api(this, '_offset', offset || 0);
+    // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
+    Object.keys(this).forEach(function(i){
+      if (isFinite(i)) {
+        if (deallocate) this[i] = null;
+        else this[i].realign(offset);
+      }
+    }, this);
+  },
+});
+
+
+}({}, function(n){ return imports[n] });
+
+
+!function(module, require){
+imports['./bitfield'] = {};
+
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./bitfield'] },
+  set: function(v){ imports['./bitfield'] = v }
+});
+
+"use strict";
+
+var utility  = require('./utility');
+var genesis  = require('./genesis');
+var bytesFor = utility.bytes;
+var bits     = utility.bits;
+var BitfieldSubtype = genesis.Subtype.bind(BitfieldType);
+
+var views = [Uint8Array, Uint8Array, Uint16Array, Uint32Array, Uint32Array];
 var powers = Array.apply(null, Array(32)).map(Function.call.bind(Number)).map(Math.pow.bind(null, 2));
 
-
-var  BitfieldSubtype = Subtype.bind(BitfieldType);
+module.exports = BitfieldType;
 
 // ################################
 // ### BitfieldType Constructor ###
@@ -761,16 +1477,17 @@ function BitfieldType(name, flags, bytes){
   if (!(bytes > 0)) {
     bytes = bytesFor(max(flags)) ;
   }
+
   // #############################
   // ### BitfieldT Constructor ###
   // #############################
 
-  function BitfieldT(buffer, offset, values) {
-    if (!Buffer.isBuffer(buffer)) {
-      values = buffer || 0;
-      buffer = null;
+  function BitfieldT(data, offset, values) {
+    if (!genesis.isBuffer(data)) {
+      values = data || 0;
+      data = null;
     }
-    this.rebase(buffer);
+    this.rebase(data);
     this.realign(offset);
 
     if (Array.isArray(values)) {
@@ -792,11 +1509,12 @@ function BitfieldType(name, flags, bytes){
   BitfieldT.prototype = {
     flags: flags,
     length: bytes * 8,
-    toString: function toString(){ return this === BitfieldT.prototype ? '[BitfieldTData]' : this.map(function(v){ return +v }).join('') },
+    toString: function toString(){ return this === BitfieldT.prototype ? '[object Data]' : this.map(function(v){ return +v }).join('') },
   };
 
   return defineFlags(BitfieldSubtype(name, bytes, BitfieldT));
 }
+
 
 function defineFlags(target) {
   var largest = 0;
@@ -823,11 +1541,13 @@ function defineFlags(target) {
   return target;
 }
 
+
+
 // #########################
 // ### BitfieldType Data ###
 // #########################
 
-Type(BitfieldType, {
+genesis.Type(BitfieldType, {
   DataType: 'bitfield',
   forEach: Array.prototype.forEach,
   reduce: Array.prototype.reduce,
@@ -835,8 +1555,8 @@ Type(BitfieldType, {
   get: function get(i){ return (this.read() & powers[i]) > 0 },
   set: function get(i){ this.write(this.read() | powers[i]); return this; },
   unset: function unset(i){ this.write(this.read() & ~powers[i]); return this; },
-  write: function write(v){ this.buffer['writeUint'+this.bytes*8](this.offset, v); return this; },
-  read: function read(){ return this.buffer['readUint'+this.bytes*8](this.offset) },
+  write: function write(v){ this._data['writeUint'+this.bytes*8](this._offset, v); return this; },
+  read: function read(){ return this._data['readUint'+this.bytes*8](this._offset) },
   reify: function reify(deallocate){
     var flags = Object.keys(this.flags);
     if (flags.length) {
@@ -852,32 +1572,47 @@ Type(BitfieldType, {
     delete this.reified;
     if (deallocate) {
       this.emit('deallocate');
-      delete this.buffer;
-      delete this.offset;
+      delete this._data;
+      delete this._offset;
     }
     return val;
-  },
-  realign: function realign(offset){
-    hidden.value = offset || 0;
-    Object.defineProperty(this, 'offset', hidden);
-  },
+  }
 });
 
+function max(arr){
+  if (Array.isArray(arr)) return arr.reduce(function(r,s){ return Math.max(s, r) }, 0);
+  else return Object.keys(arr).reduce(function(r,s){ return Math.max(arr[s], r) }, 0);
+}
+
+}({}, function(n){ return imports[n] });
 
 
-// #############################################
-// ###             API Entrypoint            ###
-// #############################################
+!function(module, require){
+imports['./index'] = {};
 
-exporter(reified);
+Object.defineProperty(module, 'exports', {
+  get: function(){ return imports['./index'] },
+  set: function(v){ imports['./index'] = v }
+});
+
+var genesis      = require('./genesis');
+var DataBuffer   = require('./buffer');
+var NumericType  = require('./numeric');
+var StructType   = require('./struct');
+var ArrayType    = require('./array');
+var BitfieldType = require('./bitfield');
+
+
+
+module.exports = reified;
 
 function reified(type, subject, size, values){
 
-  type = lookupType(type);
+  type = genesis.lookupType(type);
   if (reified.prototype.isPrototypeOf(this)) {
     return new type(subject, size, values);
   } else {
-    subject = lookupType(subject, type);
+    subject = genesis.lookupType(subject, type);
     if (!subject) {
       if (typeof type === 'string') {
         throw new TypeError('Subject is required when type not found');
@@ -885,10 +1620,10 @@ function reified(type, subject, size, values){
         return type;
       }
     }
-    if (typeof type === 'string' && Class === 'Type') {
+    if (typeof type === 'string' && subject.Class === 'Type') {
       return subject.rename(type);
     }
-    if (typeof subject === 'string' || Class === 'Type') {
+    if (typeof subject === 'string' || subject.Class === 'Type') {
       return new reified.ArrayType(type, subject, size);
     } else if (Array.isArray(subject) || typeof subject === 'number' || size) {
       return new reified.BitfieldType(type, subject, size);
@@ -901,7 +1636,7 @@ function reified(type, subject, size, values){
 // ## static functions
 
 reified.data = function data(type, buffer, offset, values){
-  type = lookupType(type);
+  type = genesis.lookupType(type);
   if (typeof type === 'string') throw new TypeError('Type not found "'+type+'"');
   return new type(buffer, offset, values);
 }
@@ -910,8 +1645,8 @@ reified.reify = function reify(data){
   return Object.getPrototypeOf(data).reify.call(data);
 }
 
-reified.isType = function isType(o){ return Type.isPrototypeOf(o) }
-reified.isData = function isData(o){ return Type.prototype.isPrototypeOf(o) }
+reified.isType = function isType(o){ return genesis.Type.isPrototypeOf(o) }
+reified.isData = function isData(o){ return genesis.Type.prototype.isPrototypeOf(o) }
 
 Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
@@ -926,9 +1661,8 @@ Object.defineProperty(reified, 'defaultEndian', {
 });
 
 // ## structures
-
-api(reified, {
-  Type:         Type,
+genesis.api(reified, {
+  Type:         genesis.Type,
   NumericType:  NumericType,
   StructType:   StructType,
   ArrayType:    ArrayType,
@@ -939,567 +1673,17 @@ api(reified, {
 
 
 
+NumericType.Uint64 = new ArrayType('Uint64', 'Uint32', 2);
+NumericType.Int64 = new ArrayType('Int64', 'Int32', 2);
 
+var OctetString = new ArrayType('EightByteOctetString', 'Uint8', 8);
 
+function octets(){ return new OctetString(this._data, this._offset) }
+NumericType.Uint64.prototype.octets = octets;
+NumericType.Int64.prototype.octets = octets;
 
+}({}, function(n){ return imports[n] });
 
-
-
-
-// ############################################
-// ###             EventEmitter2            ###
-// ############################################
-
-
-
-
-}(Function('return this')(),
-function(item, name){
-  if (typeof module === 'undefined') {
-    this[name || item.name] = item;
-  } else {
-    module.exports[name || item.name] = item;
-  }
-  return item;
-}, function(undefined) {
-
-// (The MIT License)
-// Copyright (c) 2011 hij1nx http://www.twitter.com/hij1nx
-// See either the included license file for the full text or one the following
-//  https://github.com/Benvie/reified
-//   https://github.com/hij1nx/EventEmitter2
-
-  var isArray = Array.isArray ? Array.isArray : function _isArray(obj) {
-    return Object.prototype.toString.call(obj) === "[object Array]";
-  };
-  var defaultMaxListeners = 10;
-
-  function init() {
-    this._events = new Object;
-  }
-
-  function configure(conf) {
-    if (conf) {
-      conf.delimiter && (this.delimiter = conf.delimiter);
-      conf.wildcard && (this.wildcard = conf.wildcard);
-      if (this.wildcard) {
-        this.listenerTree = new Object;
-      }
-    }
-  }
-
-  function EventEmitter(conf) {
-    this._events = new Object;
-    configure.call(this, conf);
-  }
-
-  //
-  // Attention, function return type now is array, always !
-  // It has zero elements if no any matches found and one or more
-  // elements (leafs) if there are matches
-  //
-  function searchListenerTree(handlers, type, tree, i) {
-    if (!tree) {
-      return [];
-    }
-    var listeners=[], leaf, len, branch, xTree, xxTree, isolatedBranch, endReached,
-        typeLength = type.length, currentType = type[i], nextType = type[i+1];
-    if (i === typeLength && tree._listeners) {
-      //
-      // If at the end of the event(s) list and the tree has listeners
-      // invoke those listeners.
-      //
-      if (typeof tree._listeners === 'function') {
-        handlers && handlers.push(tree._listeners);
-        return [tree];
-      } else {
-        for (leaf = 0, len = tree._listeners.length; leaf < len; leaf++) {
-          handlers && handlers.push(tree._listeners[leaf]);
-        }
-        return [tree];
-      }
-    }
-
-    if ((currentType === '*' || currentType === '**') || tree[currentType]) {
-      //
-      // If the event emitted is '*' at this part
-      // or there is a concrete match at this patch
-      //
-      if (currentType === '*') {
-        for (branch in tree) {
-          if (branch !== '_listeners' && tree.hasOwnProperty(branch)) {
-            listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i+1));
-          }
-        }
-        return listeners;
-      } else if(currentType === '**') {
-        endReached = (i+1 === typeLength || (i+2 === typeLength && nextType === '*'));
-        if(endReached && tree._listeners) {
-          // The next element has a _listeners, add it to the handlers.
-          listeners = listeners.concat(searchListenerTree(handlers, type, tree, typeLength));
-        }
-
-        for (branch in tree) {
-          if (branch !== '_listeners' && tree.hasOwnProperty(branch)) {
-            if(branch === '*' || branch === '**') {
-              if(tree[branch]._listeners && !endReached) {
-                listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], typeLength));
-              }
-              listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i));
-            } else if(branch === nextType) {
-              listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i+2));
-            } else {
-              // No match on this one, shift into the tree but not in the type array.
-              listeners = listeners.concat(searchListenerTree(handlers, type, tree[branch], i));
-            }
-          }
-        }
-        return listeners;
-      }
-
-      listeners = listeners.concat(searchListenerTree(handlers, type, tree[currentType], i+1));
-    }
-
-    xTree = tree['*'];
-    if (xTree) {
-      //
-      // If the listener tree will allow any match for this part,
-      // then recursively explore all branches of the tree
-      //
-      searchListenerTree(handlers, type, xTree, i+1);
-    }
-
-    xxTree = tree['**'];
-    if(xxTree) {
-      if(i < typeLength) {
-        if(xxTree._listeners) {
-          // If we have a listener on a '**', it will catch all, so add its handler.
-          searchListenerTree(handlers, type, xxTree, typeLength);
-        }
-
-        // Build arrays of matching next branches and others.
-        for(branch in xxTree) {
-          if(branch !== '_listeners' && xxTree.hasOwnProperty(branch)) {
-            if(branch === nextType) {
-              // We know the next element will match, so jump twice.
-              searchListenerTree(handlers, type, xxTree[branch], i+2);
-            } else if(branch === currentType) {
-              // Current node matches, move into the tree.
-              searchListenerTree(handlers, type, xxTree[branch], i+1);
-            } else {
-              isolatedBranch = {};
-              isolatedBranch[branch] = xxTree[branch];
-              searchListenerTree(handlers, type, { '**': isolatedBranch }, i+1);
-            }
-          }
-        }
-      } else if(xxTree._listeners) {
-        // We have reached the end and still on a '**'
-        searchListenerTree(handlers, type, xxTree, typeLength);
-      } else if(xxTree['*'] && xxTree['*']._listeners) {
-        searchListenerTree(handlers, type, xxTree['*'], typeLength);
-      }
-    }
-
-    return listeners;
-  }
-
-  function growListenerTree(type, listener) {
-
-    type = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
-
-    //
-    // Looks for two consecutive '**', if so, don't add the event at all.
-    //
-    for(var i = 0, len = type.length; i+1 < len; i++) {
-      if(type[i] === '**' && type[i+1] === '**') {
-        return;
-      }
-    }
-
-    var tree = this.listenerTree;
-    var name = type.shift();
-
-    while (name) {
-
-      if (!tree[name]) {
-        tree[name] = new Object;
-      }
-
-      tree = tree[name];
-
-      if (type.length === 0) {
-
-        if (!tree._listeners) {
-          tree._listeners = listener;
-        }
-        else if(typeof tree._listeners === 'function') {
-          tree._listeners = [tree._listeners, listener];
-        }
-        else if (isArray(tree._listeners)) {
-
-          tree._listeners.push(listener);
-
-          if (!tree._listeners.warned) {
-
-            var m = defaultMaxListeners;
-
-            if (typeof this._events.maxListeners !== 'undefined') {
-              m = this._events.maxListeners;
-            }
-
-            if (m > 0 && tree._listeners.length > m) {
-
-              tree._listeners.warned = true;
-              console.error('(node) warning: possible EventEmitter memory ' +
-                            'leak detected. %d listeners added. ' +
-                            'Use emitter.setMaxListeners() to increase limit.',
-                            tree._listeners.length);
-              console.trace();
-            }
-          }
-        }
-        return true;
-      }
-      name = type.shift();
-    }
-    return true;
-  };
-
-  // By default EventEmitters will print a warning if more than
-  // 10 listeners are added to it. This is a useful default which
-  // helps finding memory leaks.
-  //
-  // Obviously not all Emitters should be limited to 10. This function allows
-  // that to be increased. Set to zero for unlimited.
-
-  EventEmitter.prototype.delimiter = '.';
-
-  EventEmitter.prototype.setMaxListeners = function(n) {
-    this._events || init.call(this);
-    this._events.maxListeners = n;
-  };
-
-  EventEmitter.prototype.event = '';
-
-  EventEmitter.prototype.once = function(event, fn) {
-    this.many(event, 1, fn);
-    return this;
-  };
-
-  EventEmitter.prototype.many = function(event, ttl, fn) {
-    var self = this;
-
-    if (typeof fn !== 'function') {
-      throw new Error('many only accepts instances of Function');
-    }
-
-    function listener() {
-      if (--ttl === 0) {
-        self.off(event, listener);
-      }
-      fn.apply(this, arguments);
-    };
-
-    listener._origin = fn;
-
-    this.on(event, listener);
-
-    return self;
-  };
-
-  EventEmitter.prototype.emit = function() {
-    this._events || init.call(this);
-
-    var type = arguments[0];
-
-    if (type === 'newListener') {
-      if (!this._events.newListener) { return false; }
-    }
-
-    // Loop through the *_all* functions and invoke them.
-    if (this._all) {
-      var l = arguments.length;
-      var args = new Array(l - 1);
-      for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
-      for (i = 0, l = this._all.length; i < l; i++) {
-        this.event = type;
-        this._all[i].apply(this, args);
-      }
-    }
-
-    // If there is no 'error' event listener then throw.
-    if (type === 'error') {
-      if (!this._all && !this._events.error && !(this.wildcard && this.listenerTree.error)) {
-        if (arguments[1] instanceof Error) {
-          throw arguments[1]; // Unhandled 'error' event
-        } else {
-          throw new Error("Uncaught, unspecified 'error' event.");
-        }
-      }
-    }
-
-    var handler;
-
-    if(this.wildcard) {
-      handler = [];
-      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
-      searchListenerTree.call(this, handler, ns, this.listenerTree, 0);
-    }
-    else {
-      handler = this._events[type];
-    }
-
-    if (typeof handler === 'function') {
-      this.event = type;
-      if (arguments.length === 1) {
-        handler.call(this);
-      }
-      else if (arguments.length > 1)
-        switch (arguments.length) {
-          case 2:
-            handler.call(this, arguments[1]);
-            break;
-          case 3:
-            handler.call(this, arguments[1], arguments[2]);
-            break;
-          // slower
-          default:
-            var l = arguments.length;
-            var args = new Array(l - 1);
-            for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
-            handler.apply(this, args);
-        }
-      return true;
-    }
-    else if (handler) {
-      var l = arguments.length;
-      var args = new Array(l - 1);
-      for (var i = 1; i < l; i++) args[i - 1] = arguments[i];
-
-      var listeners = handler.slice();
-      for (var i = 0, l = listeners.length; i < l; i++) {
-        this.event = type;
-        listeners[i].apply(this, args);
-      }
-      return (listeners.length > 0) || this._all;
-    }
-    else {
-      return this._all;
-    }
-
-  };
-
-  EventEmitter.prototype.on = function(type, listener) {
-
-    if (typeof type === 'function') {
-      this.onAny(type);
-      return this;
-    }
-
-    if (typeof listener !== 'function') {
-      throw new Error('on only accepts instances of Function');
-    }
-    this._events || init.call(this);
-
-    // To avoid recursion in the case that type == "newListeners"! Before
-    // adding it to the listeners, first emit "newListeners".
-    this.emit('newListener', type, listener);
-
-    if(this.wildcard) {
-      growListenerTree.call(this, type, listener);
-      return this;
-    }
-
-    if (!this._events[type]) {
-      // Optimize the case of one listener. Don't need the extra array object.
-      this._events[type] = listener;
-    }
-    else if(typeof this._events[type] === 'function') {
-      // Adding the second element, need to change to array.
-      this._events[type] = [this._events[type], listener];
-    }
-    else if (isArray(this._events[type])) {
-      // If we've already got an array, just append.
-      this._events[type].push(listener);
-
-      // Check for listener leak
-      if (!this._events[type].warned) {
-
-        var m = defaultMaxListeners;
-
-        if (typeof this._events.maxListeners !== 'undefined') {
-          m = this._events.maxListeners;
-        }
-
-        if (m > 0 && this._events[type].length > m) {
-
-          this._events[type].warned = true;
-          console.error('(node) warning: possible EventEmitter memory ' +
-                        'leak detected. %d listeners added. ' +
-                        'Use emitter.setMaxListeners() to increase limit.',
-                        this._events[type].length);
-          console.trace();
-        }
-      }
-    }
-    return this;
-  };
-
-  EventEmitter.prototype.onAny = function(fn) {
-
-    if(!this._all) {
-      this._all = [];
-    }
-
-    if (typeof fn !== 'function') {
-      throw new Error('onAny only accepts instances of Function');
-    }
-
-    // Add the function to the event listener collection.
-    this._all.push(fn);
-    return this;
-  };
-
-  EventEmitter.prototype.addListener = EventEmitter.prototype.on;
-
-  EventEmitter.prototype.off = function(type, listener) {
-    if (typeof listener !== 'function') {
-      throw new Error('removeListener only takes instances of Function');
-    }
-
-    var handlers,leafs=[];
-
-    if(this.wildcard) {
-      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
-      leafs = searchListenerTree.call(this, null, ns, this.listenerTree, 0);
-    }
-    else {
-      // does not use listeners(), so no side effect of creating _events[type]
-      if (!this._events[type]) return this;
-      handlers = this._events[type];
-      leafs.push({_listeners:handlers});
-    }
-
-    for (var iLeaf=0; iLeaf<leafs.length; iLeaf++) {
-      var leaf = leafs[iLeaf];
-      handlers = leaf._listeners;
-      if (isArray(handlers)) {
-
-        var position = -1;
-
-        for (var i = 0, length = handlers.length; i < length; i++) {
-          if (handlers[i] === listener ||
-            (handlers[i].listener && handlers[i].listener === listener) ||
-            (handlers[i]._origin && handlers[i]._origin === listener)) {
-            position = i;
-            break;
-          }
-        }
-
-        if (position < 0) {
-          return this;
-        }
-
-        if(this.wildcard) {
-          leaf._listeners.splice(position, 1)
-        }
-        else {
-          this._events[type].splice(position, 1);
-        }
-
-        if (handlers.length === 0) {
-          if(this.wildcard) {
-            delete leaf._listeners;
-          }
-          else {
-            delete this._events[type];
-          }
-        }
-      }
-      else if (handlers === listener ||
-        (handlers.listener && handlers.listener === listener) ||
-        (handlers._origin && handlers._origin === listener)) {
-        if(this.wildcard) {
-          delete leaf._listeners;
-        }
-        else {
-          delete this._events[type];
-        }
-      }
-    }
-
-    return this;
-  };
-
-  EventEmitter.prototype.offAny = function(fn) {
-    var i = 0, l = 0, fns;
-    if (fn && this._all && this._all.length > 0) {
-      fns = this._all;
-      for(i = 0, l = fns.length; i < l; i++) {
-        if(fn === fns[i]) {
-          fns.splice(i, 1);
-          return this;
-        }
-      }
-    } else {
-      this._all = [];
-    }
-    return this;
-  };
-
-  EventEmitter.prototype.removeListener = EventEmitter.prototype.off;
-
-  EventEmitter.prototype.removeAllListeners = function(type) {
-    if (arguments.length === 0) {
-      !this._events || init.call(this);
-      return this;
-    }
-
-    if(this.wildcard) {
-      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
-      var leafs = searchListenerTree.call(this, null, ns, this.listenerTree, 0);
-
-      for (var iLeaf=0; iLeaf<leafs.length; iLeaf++) {
-        var leaf = leafs[iLeaf];
-        leaf._listeners = null;
-      }
-    }
-    else {
-      if (!this._events[type]) return this;
-      this._events[type] = null;
-    }
-    return this;
-  };
-
-  EventEmitter.prototype.listeners = function(type) {
-    if(this.wildcard) {
-      var handlers = [];
-      var ns = typeof type === 'string' ? type.split(this.delimiter) : type.slice();
-      searchListenerTree.call(this, handlers, ns, this.listenerTree, 0);
-      return handlers;
-    }
-
-    this._events || init.call(this);
-
-    if (!this._events[type]) this._events[type] = [];
-    if (!isArray(this._events[type])) {
-      this._events[type] = [this._events[type]];
-    }
-    return this._events[type];
-  };
-
-  EventEmitter.prototype.listenersAny = function() {
-
-    if(this._all) {
-      return this._all;
-    }
-    else {
-      return [];
-    }
-
-  };
-
-  return EventEmitter;
-
-}());
+return imports["./index"];
+}(this, {});
+if (typeof module !=="undefined") module.exports = reified
