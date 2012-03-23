@@ -5,8 +5,15 @@ var reified;
 
 test('load', function(t){
   t.ok(reified = require('../'), 'reified loaded');
-  t.similar(Object.keys(reified).sort(), ['data','defaultEndian','isData','isType'], 'reified has all expected enumerable names');
-  t.similar(Object.getOwnPropertyNames(reified).sort(), ['ArrayType','BitfieldType','DataBuffer','NumericType','StructType','Type', 'arguments','caller','data','defaultEndian','isData','isType','length','name','prototype'], 'reified has all expected names');
+  t.similar(Object.keys(reified).sort(), [
+    'data','defaultEndian','isData','isType'
+  ], 'reified has all expected enumerable names');
+  t.similar(Object.getOwnPropertyNames(reified).sort(), [
+    'ArrayType','BitfieldType','DataBuffer',
+    'NumericType','StructType','Type',
+    'arguments','caller','data','defaultEndian',
+    'isData','isType','length','name','prototype'
+  ], 'reified has all expected names');
   t.end();
 });
 
@@ -29,7 +36,7 @@ test('reified as Type constructor', function(t){
 test('reified as Data constructor', function(t){
   var Int32 = reified('Int32');
   var int32 = new reified('Int32', 10000);
-  t.equal(reified('Int32'), int32.constructor, 'using new produces constructs Data');
+  t.equal(reified('Int32'), int32.constructor, 'using `new` constructs Data of right type');
   t.equal(int32.reify(), 10000, 'passes value to real constructor');
   t.similar((new reified('Int32[2][2]')).reify(), [[0,0],[0,0]], 'string constructs multidimensional arrays');
   t.similar((new reified(Int32[2][2])).reify(), [[0,0],[0,0]], 'types constructs multidimensional arrays');

@@ -29,7 +29,7 @@ var reified   = require('reified'),
     Float64   = NumT.Float64;
 
 
-reified.defaultEndian = 'LE';
+reified.defaultEndian = 'BE';
 
 var flatten = Function.apply.bind([].concat, []);
 function inspect(o){ console.log(require('util').inspect(o, false, 6)) }
