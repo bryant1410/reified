@@ -35,7 +35,7 @@ test('buffer auto-allocate', function(t){
   t.ok(int8, 'constructed');
   t.equal(int8.__proto__, Int8.prototype, 'instance inherits from ctor.prototype');
   t.equal(int8.reify(), 100, 'reified value matches value given to ctor');
-  t.equal(int8._data.bytes, 1, 'buffer is correct size');
+  t.equal(int8._data.length, 1, 'buffer is correct size');
   t.equal(int8._data[0], 100, 'buffer value matches given value');
   t.end();
 });

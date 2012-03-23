@@ -72,9 +72,9 @@ test('subarray', function(t){
 
 test('fill', function(t){
   d.fill(100);
-  t.similar(toArray(b), [100, 100, 100, 100, 100, 100, 100, 100, 100, 100], 'filled with 100');
+  t.similar(d.toArray(), [100, 100, 100, 100, 100, 100, 100, 100, 100, 100], 'filled with 100');
   b.fill(30);
-  t.similar(toArray(d), [30, 30, 30, 30, 30, 30, 30, 30, 30, 30], 'filled with 30');
+  t.similar(d.toArray(), [30, 30, 30, 30, 30, 30, 30, 30, 30, 30], 'filled with 30');
   t.end();
 });
 

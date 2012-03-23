@@ -125,7 +125,7 @@ section("Cominations", [
                     "  { point: { x:  5, y: 5 }, color: red },",
                     "  { point: { x: 10, y: 0 }, color: { r: 0, g: 0, b: 128 } }",
                     "])"].join('\n'),
-                    "var tri2 = tri.copy()",
+                    "var tri2 = tri.clone()",
                     "tri2[0].point.x = 500; tri",
                     "tri.reify()",
                     "tri2.reify()",
