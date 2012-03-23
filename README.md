@@ -9,7 +9,7 @@ For node, you can simply use npm to install it/
 npm install reified
 ```
 
-For browsers there is now a rough combined version which will be improved over time. Right now it has zero testing for compatability aside from the fact that it worked in the version of Chrome what I made it work in. At minimum it will always required a ArrayBuffers or a brave soul who will translate the underlying Buffer class to work with strings.
+For browsers there is now a rough combined version which will be improved over time. It's not tested at all but it is known to work in many/most browsers with ArrayBuffer support.
 
 ## Overview
 
