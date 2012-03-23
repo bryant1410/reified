@@ -1,8 +1,6 @@
 // (The MIT License)
 // Copyright (c) 2011 hij1nx http://www.twitter.com/hij1nx
-// See either the included license file for the full text or one the following
-//  https://github.com/Benvie/reified
-//   https://github.com/hij1nx/EventEmitter2
+// See either the included license for the full text or https://github.com/hij1nx/EventEmitter2
 
 module.exports.EventEmitter = EventEmitter;
 
