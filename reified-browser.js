@@ -16,13 +16,11 @@ Object.defineProperty(module, 'exports', {
 module.exports.EventEmitter = EventEmitter;
 
 
-var isArray = Array.isArray ? Array.isArray : function _isArray(obj) {
-  return Object.prototype.toString.call(obj) === "[object Array]";
-};
+var isArray = Array.isArray;
 var defaultMaxListeners = 10;
 
 function init() {
-  this._events = new Object;
+  this._events = {};
 }
 
 function configure(conf) {
@@ -30,13 +28,13 @@ function configure(conf) {
     conf.delimiter && (this.delimiter = conf.delimiter);
     conf.wildcard && (this.wildcard = conf.wildcard);
     if (this.wildcard) {
-      this.listenerTree = new Object;
+      this.listenerTree = {};
     }
   }
 }
 
 function EventEmitter(conf) {
-  this._events = new Object;
+  this._events = {};
   configure.call(this, conf);
 }
 
@@ -170,7 +168,7 @@ function growListenerTree(type, listener) {
   while (name) {
 
     if (!tree[name]) {
-      tree[name] = new Object;
+      tree[name] = {};
     }
 
     tree = tree[name];
@@ -633,15 +631,18 @@ function copy(to, from){
 }
 
 
-if (typeof Buffer !== 'function'){
-  var Buffer = function Buffer(subject, offset, length){
+
+var Buffer = function(global){
+  if (typeof global.Buffer === 'function') return global.Buffer;
+
+  function Buffer(subject, offset, length){
     return new ArrayBuffer(subject, offset, length);
   }
   Buffer.isBuffer = function isBuffer(o){
     return o instanceof ArrayBuffer;
   }
-}
-
+  return Buffer;
+}(Function('return this')());
 
 var ArrayBuffers = { ArrayBuffer:  ArrayBuffer };
 
@@ -739,17 +740,11 @@ DataBuffer.prototype = {
   map: function(){
     return [].map.apply(this.typed('Uint8'), arguments);
   },
-  slice: function(offset, length, encoding){
-    offset = toNum(offset);
-    var end = isFinite(length) ? toNum(length) + offset : this.length - offset;
-    return this.subarray(offset, end).toString(encoding || 'ascii');
+  slice: function(start, end, encoding){
+    return this.subarray(start, end).toString(encoding || 'ascii');
   },
-  // inspect: function(){
-  //   return '<DataBuffer '+this.length+'b>';
-  // },
   toArray: function(type){
-    type = type || 'Uint8';
-    return [].map.call(this.typed(type), function(x){ return x });
+    return [].map.call(this.typed(type || 'Uint8'), function(x){ return x });
   },
   toString: function(encoding){
     switch (encoding) {
@@ -945,7 +940,7 @@ function Subtype(name, bytes, ctor){
 var Data = Type.prototype = {
   __proto__: EventEmitter.prototype,
   Class: 'Data',
-  toString: function toString(){ return '[object '+this.constructor.name+'Data]' },
+  toString: function toString(){ return '[object '+this.constructor.name+']' },
   rebase: function rebase(data){
     if (data == null) {
       data = new DataBuffer(this.bytes);
@@ -958,7 +953,7 @@ var Data = Type.prototype = {
     api(this, '_data', data);
   },
   realign: function realign(offset){
-    api(this, '_offset', offset || 0);
+    this._offset = +offset || 0;
   },
   clone: function clone(){
     return new this.constructor(this._data, this._offset);
@@ -1070,7 +1065,7 @@ function NumericType(name, bytes){
       data = null;
     }
     this.rebase(data);
-    this.realign(offset);
+    genesis.api(this, '_offset', +offset || 0);
 
     if (value != null) {
       this.write(value);
@@ -1167,7 +1162,7 @@ function StructType(name, fields){
       data = null;
     }
     this.rebase(data);
-    this.realign(offset);
+    genesis.api(this, '_offset', +offset || 0);
 
     if (values) {
       Object.keys(values).forEach(function(field){
@@ -1250,7 +1245,7 @@ genesis.Type(StructType, {
   },
 
   realign: function realign(offset, deallocate){
-    genesis.api(this, '_offset', offset || 0);
+    this._offset = offset = +offset || 0;
     // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
     Object.keys(this).forEach(function(field){
       if (deallocate) this[field] = null;
@@ -1415,9 +1410,8 @@ genesis.Type(ArrayType, {
   },
 
   realign: function realign(offset, deallocate){
-
-    genesis.api(this, '_offset', offset || 0);
-    // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
+    this._offset = offset = +offset || 0;
+    // use realiagn as a chance to deallocate since everything is being reset essentially
     Object.keys(this).forEach(function(i){
       if (isFinite(i)) {
         if (deallocate) this[i] = null;
@@ -1488,7 +1482,7 @@ function BitfieldType(name, flags, bytes){
       data = null;
     }
     this.rebase(data);
-    this.realign(offset);
+    genesis.api(this, '_offset', +offset || 0);
 
     if (Array.isArray(values)) {
       values.forEach(function(flag){ this[flag] = true }, this);

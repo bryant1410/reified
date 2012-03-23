@@ -33,5 +33,14 @@ var output = [
 ].join('\n');
 
 fs.writeFileSync('../reified-browser.js', output);
+fs.writeFileSync('../reified-browser.min.js', compress(output));
+
+function compress(src) {
+  var parse = require('uglify-js').parser.parse;
+  var ug = require('uglify-js').uglify;
+  var opts = { make_seqs: true };
+  return ug.gen_code(ug.ast_squeeze_more(ug.ast_squeeze(ug.ast_mangle(parse(src)), opts)));
+}
+
 
 console.log(require('../reified-browser'));

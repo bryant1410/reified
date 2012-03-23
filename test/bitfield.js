@@ -23,7 +23,7 @@ test('constructor properties', function(t){
   t.equal(Desc.name, 'DescriptorFlags', 'named');
   t.equal(Desc.bytes, 1, 'correct bytes');
   t.equal(Desc.__proto__, Bitfield.prototype, 'ctor inherits from numeric.prototype');
-  t.equal(Desc+'', '[object Type]', 'toString shows class "Type"');
+  t.equal(Desc+'', '[object DescriptorFlagsType]', 'toString shows class "DescriptorFlagsType"');
   t.end();
 });
 
@@ -31,7 +31,7 @@ test('prototype properties', function(t){
   t.equal(Desc.bytes, Desc.prototype.bytes, 'prototype bytes match constructor bytes');
   t.equal(Desc.prototype.__proto__, Bitfield.prototype.prototype, 'prototype inherits from numeric.prototype.prototype');
   t.equal(Desc.prototype.DataType, 'bitfield', 'DataType is correct');
-  t.equal(Desc.prototype+'', '[object Data]', 'toString shows class "Data"');
+  t.equal(Desc.prototype+'', '[object DescriptorFlags]', 'toString shows class "DescriptorFlags"');
   t.end();
 });
 

@@ -7,13 +7,11 @@
 module.exports.EventEmitter = EventEmitter;
 
 
-var isArray = Array.isArray ? Array.isArray : function _isArray(obj) {
-  return Object.prototype.toString.call(obj) === "[object Array]";
-};
+var isArray = Array.isArray;
 var defaultMaxListeners = 10;
 
 function init() {
-  this._events = new Object;
+  this._events = {};
 }
 
 function configure(conf) {
@@ -21,13 +19,13 @@ function configure(conf) {
     conf.delimiter && (this.delimiter = conf.delimiter);
     conf.wildcard && (this.wildcard = conf.wildcard);
     if (this.wildcard) {
-      this.listenerTree = new Object;
+      this.listenerTree = {};
     }
   }
 }
 
 function EventEmitter(conf) {
-  this._events = new Object;
+  this._events = {};
   configure.call(this, conf);
 }
 
@@ -161,7 +159,7 @@ function growListenerTree(type, listener) {
   while (name) {
 
     if (!tree[name]) {
-      tree[name] = new Object;
+      tree[name] = {};
     }
 
     tree = tree[name];

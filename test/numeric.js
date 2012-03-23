@@ -18,7 +18,7 @@ test('constructor properties', function(t){
   t.equal(Int8.name, 'Int8', 'named');
   t.equal(Int8.bytes, 1, 'correct bytes');
   t.equal(Int8.__proto__, numeric.prototype, 'ctor inherits from numeric.prototype');
-  t.equal(Int8+'', '[object Type]', 'toString shows class "Type"');
+  t.equal(Int8+'', '[object Int8Type]', 'toString shows class "Int8Type"');
   t.end();
 });
 
@@ -27,7 +27,7 @@ test('prototype properties', function(t){
   t.equal(Int8.prototype.__proto__, numeric.prototype.prototype, 'prototype inherits from numeric.prototype.prototype');
   t.equal(Int8.prototype.DataType, 'numeric', 'DataType is correct');
   t.equal(Int8.prototype.Subtype, 'Int8', 'Subtype is correct');
-  t.equal(Int8.prototype+'', '[object Data]', 'toString shows class "Data"');
+  t.equal(Int8.prototype+'', '[object Int8]', 'toString shows class "Int8"');
   t.end();
 });
 
