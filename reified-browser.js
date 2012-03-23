@@ -3,8 +3,8 @@
 
 var hasProto = !!Function.__proto__;
 var types = {};
-var nullable = D.nullable = { value: undefined, writable: true, configurable: true };
-var hidden = D.hidden ={ configurable: true, writable: true, value: 0 };
+var nullable = { value: undefined, writable: true, configurable: true };
+var hidden = { configurable: true, writable: true, value: 0 };
 var numTypes = {
      Int8: 1,
     Uint8: 1,
@@ -22,11 +22,22 @@ function bytesFor(n){ return ((bits(n) / 8) | 0) + 1 }
 function toNum(n){ return isFinite(n) ? +n : 0 }
 function toNumOrUndef(n){ if (isFinite(n)) return +n }
 function toUint8(x) { return (x >>> 0) & 0xff }
-
 function max(arr){
   if (Array.isArray(arr)) return arr.reduce(function(r,s){ return Math.max(s, r) }, 0);
   else return Object.keys(arr).reduce(function(r,s){ return Math.max(arr[s], r) }, 0);
 }
+
+function api(o, n, v){
+  if (Object(n) === n) {
+    Object.keys(n).forEach(function(k){
+      api(o, k, n[k]);
+    });
+  } else {
+    hidden.value = v;
+    Object.defineProperty(o, n, hidden);
+  }
+}
+
 function copy(from, to, hidden){
   Object[hidden ? 'getOwnPropertyNames' : 'keys'](from).forEach(function(key){
     var desc = Object.getOwnPropertyDescriptor(from, key);
@@ -36,35 +47,6 @@ function copy(from, to, hidden){
   return to;
 }
 
-function D(flags, value){
-  return {
-    value        : value,
-    enumerable   : Boolean(flags & ENUMERABLE),
-    configurable : Boolean(flags & CONFIGURABLE),
-    writable     : Boolean(flags & WRITABLE)
-  };
-}
-var PRIVATE      = 0,
-    ENUMERABLE   = 1,
-    CONFIGURABLE = 2,
-    READONLY     = 3,
-    WRITABLE     = 4,
-    FROZEN       = 5,
-    HIDDEN       = 6,
-    NORMAL       = 7;
-
-function attachFlags(o){
-  o.___ = D.bind(null, PRIVATE     );
-  o.E__ = D.bind(null, ENUMERABLE  );
-  o._C_ = D.bind(null, CONFIGURABLE);
-  o.EC_ = D.bind(null, READONLY    );
-  o.__W = D.bind(null, WRITABLE    );
-  o.E_W = D.bind(null, FROZEN      );
-  o._CW = D.bind(null, HIDDEN      );
-  o.ECW = D.bind(null, NORMAL      );
-}
-
-attachFlags(D);
 
 var types = ['Int8', 'Int16', 'Int32', 'Uint8', 'Uint16', 'Uint32', 'Float32', 'Float64'];
 
@@ -436,8 +418,7 @@ Type(NumericType, {
   DataType: 'numeric',
   fill: function fill(v){ this.write(0, v || 0) },
   realign: function realign(offset){
-    D.hidden.value = offset || 0;
-    Object.defineProperty(this, 'offset', D.hidden);
+    api(this, 'offset', offset | 0);
   },
 });
 
@@ -481,8 +462,7 @@ function ArrayType(name, MemberType, length) {
       buffer = null;
     }
     this.rebase(buffer);
-    D.hidden.value = offset || 0;
-    Object.defineProperty(this, 'offset', D.hidden);
+    api(this, 'offset', offset | 0);
 
     values && Object.keys(values).forEach(function(i){
       initIndex(this, MemberType, i).write(values[i]);
@@ -582,8 +562,7 @@ Type(ArrayType, {
   },
 
   realign: function realign(offset, deallocate){
-    D.hidden.offset = (offset = +offset || 0);
-    Object.defineProperty(this, 'offset', D.hidden);
+    api(this, 'offset', +offset || 0);
     // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
     Object.keys(this).forEach(function(i){
       if (isFinite(i)) {
@@ -676,7 +655,7 @@ function initField(target, ctor, field){
       if (v === null) {
         // take null to mean full deallocate
         this.emit('deallocate', field);
-        Object.defineProperty(this, field, D.nullable);
+        Object.defineProperty(this, field, nullable);
         delete this[field];
         block = null;
       } else {
@@ -733,8 +712,7 @@ Type(StructType, {
   },
 
   realign: function realign(offset, deallocate){
-    D.hidden.value = offset || 0;
-    Object.defineProperty(this, 'offset', D.hidden);
+    api(this, 'offset', +offset || 0);
     Object.keys(this).forEach(function(field){
       if (deallocate) this[field] = null;
       else this[field].realign(offset);
@@ -949,14 +927,14 @@ Object.defineProperty(reified, 'defaultEndian', {
 
 // ## structures
 
-Object.defineProperties(reified, {
-  Type:          D._CW(Type),
-  NumericType:   D._CW(NumericType),
-  StructType:    D._CW(StructType),
-  ArrayType:     D._CW(ArrayType),
-  BitfieldType:  D._CW(BitfieldType),
-  DataBuffer:    D._CW(DataBuffer),
-  toString:      D._CW(function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' }),
+api(reified, {
+  Type:         Type,
+  NumericType:  NumericType,
+  StructType:   StructType,
+  ArrayType:    ArrayType,
+  BitfieldType: BitfieldType,
+  DataBuffer:   DataBuffer,
+  toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
 });
 
 

@@ -1,6 +1,6 @@
 var tap = require("tap");
 var test = tap.test;
-var DataBuffer = require('../lib/buffer').DataBuffer;
+var DataBuffer = require('../lib/buffer');
 var numeric;
 var Int8;
 
@@ -44,7 +44,6 @@ test('provided buffer', function(t){
   var buffer = new DataBuffer(1);
   buffer[0] = 30;
   var int8 = new Int8(buffer);
-  console.log(int8);
   t.equal(int8.reify(), 30, 'reifies to value preset on buffer');
   int8.write(50);
   t.equal(buffer[0], 50, 'buffer matches newly written value');

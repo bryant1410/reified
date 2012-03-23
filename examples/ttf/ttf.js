@@ -13,7 +13,6 @@ module.exports = Font;
 // One where everything uses the `reified` function magic. It's mostly a matter of style.
 
 var reified   = require('reified'),
-    Buffer    = reified.Buffer,
     BitfieldT = reified.BitfieldType,
     StructT   = reified.StructType,
     ArrayT    = reified.ArrayType,
@@ -29,7 +28,8 @@ var reified   = require('reified'),
     Float32   = NumT.Float32,
     Float64   = NumT.Float64;
 
-reified.defaultEndian = 'BE';
+
+reified.defaultEndian = 'LE';
 
 var flatten = Function.apply.bind([].concat, []);
 function inspect(o){ console.log(require('util').inspect(o, false, 6)) }
@@ -38,7 +38,6 @@ function inspect(o){ console.log(require('util').inspect(o, false, 6)) }
 
 
 function Font(buffer, filename){
-  buffer = new Buffer(buffer);
   this.filename = filename;
   this.name = filename.slice(0, -path.extname(filename).length);
 
@@ -47,9 +46,8 @@ function Font(buffer, filename){
   //inspect(this.index.constructor);
   //inspect(this.index)
   //var reified = this.index.reify(true);
-  //inspect();
   
-  inspect(this.index)
+  //inspect(this.index)
   inspect(this.index.reify())
 }
 
@@ -107,7 +105,9 @@ FontIndex.prototype.on('construct', function(){
 var Tag = new ArrayT('Tag', Uint8, 4);
 
 Tag.prototype.on('reify', function(val){
-  this.reified = this.buffer.asciiSlice(this.offset, this.offset+this.bytes);
+  this.reified = val.map(function(s){
+    return String.fromCharCode(s);
+  }).join('');
 });
 
 

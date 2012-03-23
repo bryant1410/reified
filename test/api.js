@@ -1,6 +1,6 @@
 var tap = require("tap");
 var test = tap.test;
-var DataBuffer = require('../lib/buffer').DataBuffer;
+var DataBuffer = require('../lib/buffer');
 var reified;
 
 test('load', function(t){
@@ -37,7 +37,7 @@ test('reified as Data constructor', function(t){
   function OCT(n){ return [n,0,0,0] }
   var flatten = Function.call.bind([].concat, []);
   var buff = new Buffer(flatten(OCT(1), OCT(2), OCT(3), OCT(4)));
-  t.similar((new reified(Int32[2][2], buff)).reify(), [[0,1],[2,3]], 'Provided buffer reifies correctly');
+  t.similar((new reified('Int32[2][2]', buff)).reify(), [[1,2],[3,4]], 'Provided buffer reifies correctly');
   t.end();
 });
 

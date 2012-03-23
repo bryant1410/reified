@@ -1,5 +1,4 @@
 var inspect = require('util').inspect;
-require('../lib/utility').MAKE_ALL_ENUMERABLE();
 
 //delete Buffer.prototype.inspect;
 

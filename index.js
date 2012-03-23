@@ -1,6 +1,5 @@
 var genesis      = require('./lib/genesis');
-var D            = require('./lib/utility').desc;
-var DataBuffer       = require('./lib/buffer').DataBuffer;
+var DataBuffer   = require('./lib/buffer');
 var NumericType  = require('./lib/numeric');
 var StructType   = require('./lib/struct');
 var ArrayType    = require('./lib/array');
@@ -66,13 +65,12 @@ Object.defineProperty(reified, 'defaultEndian', {
 });
 
 // ## structures
-
-Object.defineProperties(reified, {
-  Type:          D._CW(genesis.Type),
-  NumericType:   D._CW(NumericType),
-  StructType:    D._CW(StructType),
-  ArrayType:     D._CW(ArrayType),
-  BitfieldType:  D._CW(BitfieldType),
-  DataBuffer:    D._CW(DataBuffer),
-  toString:      D._CW(function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' }),
+genesis.api(reified, {
+  Type:         genesis.Type,
+  NumericType:  NumericType,
+  StructType:   StructType,
+  ArrayType:    ArrayType,
+  BitfieldType: BitfieldType,
+  DataBuffer:   DataBuffer,
+  toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
 });
