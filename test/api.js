@@ -4,6 +4,7 @@ var DataBuffer = require('../lib/buffer');
 var reified;
 
 test('load', function(t){
+  console.log('\n** API');
   t.ok(reified = require('../'), 'reified loaded');
   t.similar(Object.keys(reified).sort(), [
     'data','defaultEndian','isData','isType'

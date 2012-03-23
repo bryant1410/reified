@@ -4,6 +4,7 @@ var ArrayType;
 var ArrayT;
 
 test('load', function(t){
+  console.log('#\n** Array');
   t.ok(ArrayType = require('../lib/array'), 'ArrayType loaded');
   t.ok(require('../'), 'reified loaded');
   t.end();
@@ -24,7 +25,6 @@ test('constructor properties', function(t){
 
 test('instance creation', function(t){
 	var Int8x10 = new ArrayT;
-  t.equal(Int8x10.constructor, ArrayT, 'constructor set correctly');
   t.equal(Int8x10.bytes, 10, 'correct bytes');
   t.equal(Int8x10.length, 10, 'correct length');
   t.similar(Object.keys(Int8x10), [], 'indices not initialized');

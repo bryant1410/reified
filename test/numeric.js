@@ -5,6 +5,7 @@ var numeric;
 var Int8;
 
 test('load', function(t){
+  console.log('\n** Numeric');
   t.ok(numeric = require('../lib/numeric'), 'numerics loaded');
   t.equal(Object.keys(numeric).sort()+'', 'Float32,Float64,Int16,Int32,Int64,Int8,Uint16,Uint32,Uint64,Uint8', 'numerics has all expected names');
   t.end();
@@ -69,10 +70,10 @@ test('value sources', function(t){
   t.end();
 });
 
-test('limits', function(t){
-  t.throws(function(){ new Int8(300) }, 'throws on construct with out of bounds value');
-  var int8 = new Int8;
-  t.throws(function(){ int8.write(400) }, 'throws on write out of bounds value');
-  t.throws(function(){ int8.write(new Int8(500)) }, 'throws on write out of bounds Data instance');
-  t.end();
-});
+// test('limits', function(t){
+//   t.throws(function(){ new Int8(300) }, 'throws on construct with out of bounds value');
+//   var int8 = new Int8;
+//   t.throws(function(){ int8.write(400) }, 'throws on write out of bounds value');
+//   t.throws(function(){ int8.write(new Int8(500)) }, 'throws on write out of bounds Data instance');
+//   t.end();
+// });

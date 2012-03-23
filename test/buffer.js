@@ -15,6 +15,7 @@ var DataBuffer;
 var d;
 
 test('initialize', function(t){
+  console.log('\n** DataBuffer');
   t.ok(DataBuffer = require('../lib/buffer'), 'DataBuffer loaded');
   t.ok(d = new DataBuffer(b), 'new DataBuffer(buffer)');
   t.end();

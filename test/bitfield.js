@@ -4,6 +4,7 @@ var Bitfield;
 var Desc;
 
 test('load', function(t){
+  console.log('\n** Bitfield');
   t.ok(Bitfield = require('../lib/bitfield'), 'BitfieldType loaded');
   t.end();
 });
