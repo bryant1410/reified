@@ -35,8 +35,8 @@ test('buffer auto-allocate', function(t){
   t.ok(int8, 'constructed');
   t.equal(int8.__proto__, Int8.prototype, 'instance inherits from ctor.prototype');
   t.equal(int8.reify(), 100, 'reified value matches value given to ctor');
-  t.equal(int8.buffer.bytes, 1, 'buffer is correct size');
-  t.equal(int8.buffer[0], 100, 'buffer value matches given value');
+  t.equal(int8._data.bytes, 1, 'buffer is correct size');
+  t.equal(int8._data[0], 100, 'buffer value matches given value');
   t.end();
 });
 
@@ -55,7 +55,7 @@ test('shared buffer', function(t){
   var first = new Int8(100);
   var second = new Int8(first);
   t.notEqual(first, second, 'different wrappers');
-  t.equal(first.buffer.buffer, second.buffer.buffer, 'have same buffer');
+  t.equal(first._data.buffer, second._data.buffer, 'have same buffer');
   t.equal(first.offset, second.offset, 'offsets match');
   second.write(50);
   t.equal(first.reify(), 50, 'writing to one alters the other');

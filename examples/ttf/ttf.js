@@ -127,7 +127,7 @@ Table.prototype.on('construct', function(){
   switch (tag) {
     case 'OS/2':
       // this is a pointer, there needs to be a way to represent this
-      this.table = new OS2(this.buffer, this.byteOffset.reify());
+      this.table = new OS2(this._data, this.byteOffset.reify());
       break;
     default:
   }
@@ -172,7 +172,7 @@ function Index(tableCount, fontIndex){
 }
 
 function initField(target, ctor, field){
-  var block = new ctor.fields[field](target.buffer, target.offset + ctor.offsets[field]) ;
+  var block = new ctor.fields[field](target._data, target._offset + ctor.offsets[field]) ;
   Object.defineProperty(target, field, {
     enumerable: true,
     configurable: true,

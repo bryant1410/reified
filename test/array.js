@@ -36,7 +36,7 @@ test('instance creation', function(t){
   t.equal(Int8x10.reify()+'', '1,1,1,1,1,1,1,1,1,1', 'fill with single number');
   Int8x10.write([10,20,30,40,50])
   t.equal(Int8x10.reify()+'', '10,20,30,40,50,1,1,1,1,1', 'writing array with smaller size only writes given values');
-  Int8x10.buffer[0] = 100;
+  Int8x10._data[0] = 100;
   t.equal(Int8x10.reify()+'', '100,20,30,40,50,1,1,1,1,1', 'reflects buffer changes');
   var clone = Int8x10.clone();
   clone[1] = 14;

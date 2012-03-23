@@ -39,8 +39,8 @@ test('flags', function(t){
   t.ok(desc, 'constructed');
   t.equal(desc.__proto__, Desc.prototype, 'instance inherits from ctor.prototype');
   t.similar(desc.reify(), ["CONFIGURABLE","READONLY","WRITABLE","FROZEN","HIDDEN","NOTPRIVATE"], 'reifies to correct keys and values');
-  t.equal(desc.buffer.length, 1, 'buffer is correct size');
-  t.equal(desc.buffer[0], 6, 'buffer value matches given value');
+  t.equal(desc._data.bytes, 1, 'buffer is correct size');
+  t.equal(desc._data[0], 6, 'buffer value matches given value');
 
   t.equal(desc+'', '011', 'toString shows correct bits');
   desc.READONLY = false;

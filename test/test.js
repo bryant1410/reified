@@ -83,7 +83,7 @@ section("Bitfield", [
                  "['ENUMERABLE','CONFIGURABLE','WRITABLE'])",
                  "inst = new Desc",
                  "inst.ENUMERABLE = true; inst",
-                 "inst.buffer",
+                 "inst._data",
                  "inst.read()",
                  "inst.write(1 << 2 | 1 << 4)",
                  "inst.read()" ] ]
