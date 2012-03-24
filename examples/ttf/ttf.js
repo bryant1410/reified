@@ -180,7 +180,7 @@ function initField(target, ctor, field){
     set: function(v){
       if (v === null) {
         this.emit('deallocate', field);
-        Object.defineProperty(this, field, {writable: true, configurable: true, value: undefined });
+        Object.defineProperty(this, field, { writable: true, configurable: true, value: undefined });
         delete this[field];
         block = null;
       } else {
@@ -253,7 +253,7 @@ var OS2 = new StructT('OS2', {
   strikeout    : new StructT('Strikeout',
   { size         : Int16,
     position     : Int16 }),
-  class        : new ArrayT('Classes', Int8, 2),
+  class        : Int8[2],
   panose       : PANOSE,
   unicodePages : UnicodePages,
   vendorID     : Tag,

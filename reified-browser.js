@@ -612,24 +612,13 @@ Object.defineProperty(module, 'exports', {
 
 "use strict";
 
+var utility = require('./utility');
 
 module.exports = DataBuffer;
 
 var types = ['Int8', 'Int16', 'Int32', 'Uint8', 'Uint16', 'Uint32', 'Float32', 'Float64'];
 
-function bits(n){ return Math.log(n) / Math.LN2 }
-function bytesFor(n){ return ((bits(n) / 8) | 0) + 1 }
-
-function copy(to, from){
-  Object.keys(from).forEach(function(key){
-    var desc = Object.getOwnPropertyDescriptor(from, key);
-    Object.defineProperty(to, key, desc);
-  });
-  return to;
-}
-
-
-
+// Basic stand-in for Buffer in browsers that defers to ArrayBuffer
 var Buffer = function(global){
   if ('Buffer' in global) return global.Buffer;
 
@@ -665,7 +654,7 @@ function DataBuffer(subject, offset, length){
     this.view = new DataView(subject, offset, length);
   } else if (subject instanceof DataView) {
     offset = offset || subject.byteOffset;
-    length = offset || subject.byteLength;
+    length = length || subject.byteLength;
     this.view = new DataView(subject.buffer, offset, length);
   } else if (DataBuffer.isDataBuffer(subject)) {
     this.view = new DataView(subject.buffer, subject.offset + offset, length || subject.length);
@@ -1440,7 +1429,6 @@ var bytesFor = utility.bytes;
 var bits     = utility.bits;
 var BitfieldSubtype = genesis.Subtype.bind(BitfieldType);
 
-var views = [Uint8Array, Uint8Array, Uint16Array, Uint32Array, Uint32Array];
 var powers = Array.apply(null, Array(32)).map(Function.call.bind(Number)).map(Math.pow.bind(null, 2));
 
 module.exports = BitfieldType;
@@ -1502,7 +1490,11 @@ function BitfieldType(name, flags, bytes){
   BitfieldT.prototype = {
     flags: flags,
     length: bytes * 8,
-    toString: function toString(){ return this === BitfieldT.prototype ? '[object Data]' : this.map(function(v){ return +v }).join('') },
+    toString: function toString(){
+      return this === BitfieldT.prototype
+                      ? '[object '+name+']'
+                      : this.map(function(v){ return +v }).join('');
+    }
   };
 
   return defineFlags(BitfieldSubtype(name, bytes, BitfieldT));
@@ -1545,11 +1537,24 @@ genesis.Type(BitfieldType, {
   forEach: Array.prototype.forEach,
   reduce: Array.prototype.reduce,
   map: Array.prototype.map,
-  get: function get(i){ return (this.read() & powers[i]) > 0 },
-  set: function get(i){ this.write(this.read() | powers[i]); return this; },
-  unset: function unset(i){ this.write(this.read() & ~powers[i]); return this; },
-  write: function write(v){ this._data['writeUint'+this.bytes*8](this._offset, v); return this; },
-  read: function read(){ return this._data['readUint'+this.bytes*8](this._offset) },
+  get: function get(i){
+    return (this.read() & powers[i]) > 0;
+  },
+  set: function get(i){
+    this.write(this.read() | powers[i]);
+    return this;
+  },
+  unset: function unset(i){
+    this.write(this.read() & ~powers[i]);
+    return this;
+  },
+  write: function write(v){
+    this._data['writeUint'+this.bytes*8](this._offset, v);
+    return this;
+  },
+  read: function read(){
+    return this._data['readUint'+this.bytes*8](this._offset);
+  },
   reify: function reify(deallocate){
     var flags = Object.keys(this.flags);
     if (flags.length) {
@@ -1600,19 +1605,12 @@ var BitfieldType = require('./bitfield');
 module.exports = reified;
 
 function reified(type, subject, size, values){
-
   type = genesis.lookupType(type);
   if (reified.prototype.isPrototypeOf(this)) {
     return new type(subject, size, values);
   } else {
     subject = genesis.lookupType(subject, type);
-    if (!subject) {
-      if (typeof type === 'string') {
-        throw new TypeError('Subject is required when type not found');
-      } else {
-        return type;
-      }
-    }
+    if (!subject) return type;
     if (typeof type === 'string' && subject.Class === 'Type') {
       return subject.rename(type);
     }
@@ -1621,6 +1619,23 @@ function reified(type, subject, size, values){
     } else if (Array.isArray(subject) || typeof subject === 'number' || size) {
       return new reified.BitfieldType(type, subject, size);
     } else {
+      if (typeof type !== 'string' && typeof subject === 'undefined') {
+        subject = type;
+        type = '';
+      }
+      subject = Object.keys(subject).reduce(function(ret, key){
+        if (subject[key].Class !== 'Type') {
+          var fieldType = reified(subject[key]);
+          if (typeof fieldType === 'string' || fieldType.Class !== 'Type') {
+            ret[key] = reified(key, subject[key]);
+          } else {
+            ret[key] = fieldType;
+          }
+        } else {
+          ret[key] = subject[key];
+        }
+        return ret;
+      }, {});
       return new reified.StructType(type, subject);
     }
   }
@@ -1664,7 +1679,15 @@ genesis.api(reified, {
   toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
 });
 
+function isSame(arr1, arr2){
+  return !diff(arr1, arr2).length;
+}
 
+function diff(arr1, arr2){
+  return arr1.filter(function(item){
+    return !~arr2.indexOf(item);
+  });
+}
 
 NumericType.Uint64 = new ArrayType('Uint64', 'Uint32', 2);
 NumericType.Int64 = new ArrayType('Int64', 'Int32', 2);
