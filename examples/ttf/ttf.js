@@ -159,7 +159,7 @@ function Index(tableCount, fontIndex){
   });
 
   // cludge to append on a dynamically sized array. This needs an API
-  fontIndex.constructor.names.push('tables');
+  fontIndex.constructor.keys.push('tables');
   fontIndex.constructor.offsets.tables = fontIndex.bytes;
   fontIndex.constructor.fields.tables = TableIndex;
   fontIndex.bytes = fontIndex.constructor.bytes = fontIndex.bytes + TableIndex.bytes;
