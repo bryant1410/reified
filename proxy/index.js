@@ -1,18 +1,10 @@
-//This is so no stable it's not even funny so be prepared for breakage.
+//This is so not stable it's not even funny so be prepared for breakage.
 //In node or chrome it requires you somehow load the included direct-proxies shim.
-//I haven't set this up to work in Firefox correctly yet but it should basically be done by loading the shim unmodified (without the V8 wrapper).
-//That said, it's pretty awesome if it you manage to get everything in the right place and it doesn't break.
-//The expected result is illustrated as follows:
+//This isn't set up to work in Firefox yet but it should be done by loading the shim without the V8 wrapper.
 
-//var reify = require('./') //in this directory.
-//var Pixel = reify('Pixel', { x: 'Uint32', y: 'Uint32', color: { r: 'Uint8', g: 'Uint8', b: 'Uint8' } });
-//var red = Pixel({ x: 100, y: 100, color: { r: 255, g: 0, b: 0 } });
-//console.log(red); //should look indentical to the object passed to Pixel
-//console.log(reify.unwrap(red)._data) //should give the underlying DataBuffer
-
-if (!module.proxyLoaded && typeof Proxy === 'object') {
-  require('direct-proxies');
-  module.proxyLoaded = true;
+if (typeof global.Proxy === 'object') {
+  var Reflect = require('direct-proxies');
+  var Proxy = Reflect.Proxy;
 }
 
 var reified = require('reified');
@@ -79,37 +71,33 @@ var TypeHandler = {
 };
 
 function handler(of){
-  if (of.DataType in DataHandler) {
-    var handle = DataHandler[of.DataType];
-  } else {
-    var handle = DataHandler.prototype;
-  }
   return Proxy({}, {
     get: function(t, trap){
-      return function(target, name, args){
-        if (trap === 'apply') name = '[[Call]]';
-        if (trap === 'construct') args = name, name = '[[Construct]]';
-        if (trap in handle) {
-          var res = handle[trap].apply(handle, arguments);
-        } else {
-          var res = Reflect[trap].apply(handle, arguments);
+      return function(target, name, val){
+        var res = DataHandler[trap].apply(t, arguments);
+        if (1) {
+          if (trap === 'apply') name = undefined;
+          if (trap === 'get') val = undefined;
+          if (trap === 'construct') val = name, name = undefined;
+          var log = [trap];
+          name && log.push(name);
+          val && log.push(val);
+          res !== undefined && log.push(res);
+          console.log.apply(console, log)
         }
-        //console.log(trap, name, res);
         return res;
       }
     }
   });
 }
 
-function DataHandler(type, traps){
-  DataHandler[type] = this;
-  this.type = type;
-  for (var k in traps) {
-    this[k] = traps[k];
-  }
-}
+function NormalDesc(v){ this.value = v }
+NormalDesc.prototype = { enumerable: true, configurable: true, writable: true }
+function HiddenDesc(v){ this.value = v }
+HiddenDesc.prototype = { configurable: true, writable: true }
 
-DataHandler.prototype = {
+var DataHandler = {
+  __proto__: Reflect,
   getOwnPropertyNames: function(target){
     return unique(unwrapType(target).keys.concat(Reflect.getOwnPropertyNames(target)));
   },
@@ -117,11 +105,11 @@ DataHandler.prototype = {
     return unique(unwrapType(target).keys.concat(Reflect.keys(target)));
   },
   getOwnPropertyDescriptor: function(target, name){
-    var ret = Reflect.getOwnPropertyDescriptor(target, name);
-    if (ret && ~unwrapType(target).keys.indexOf(name)) {
-      ret.value = rewrap(target, name);
+    if (~unwrapType(target).keys.indexOf(name)) {
+      return new NormalDesc(rewrap(target, name));
+    } else {
+      return Reflect.getOwnPropertyDescriptor(target, name);
     }
-    return ret;
   },
   enumerate: function(target){
     return Reflect.enumerate(target);
@@ -142,7 +130,7 @@ DataHandler.prototype = {
     if (name === '__proto__') {
       target.__proto__ = value;
     } else if (~unwrapType(target).keys.indexOf(name)) {
-      unwrap(target)[name] = value;
+      unwrapIface(target)[name] = value;
     } else {
       Reflect.set(target, name, value, receiver);
     }
@@ -152,9 +140,6 @@ DataHandler.prototype = {
   }
 };
 
-new DataHandler('array', {});
-
-new DataHandler('struct', {});
 
 
 var reify = module.exports = Proxy(reified, {
@@ -167,6 +152,11 @@ var reify = module.exports = Proxy(reified, {
 });
 
 
+var RGB = reify('RGB', { r: 'Uint8', g: 'Uint8', b: 'Uint8' });
+
+var red = RGB({r: 0, g: 0, b: 0 });
+red.r = 100;
+console.log(red);
 /*
 
 var traps = {
@@ -188,3 +178,4 @@ var traps = {
   construct                 : ['target', 'args']                       , //->  any
 };
 */
+
