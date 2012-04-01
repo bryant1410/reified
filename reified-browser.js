@@ -729,6 +729,17 @@ DataBuffer.prototype = {
     }
   },
 
+  write: function(source, offset, length){
+    length = isFinite(length) ? +length : source.length;
+    offset = isFinite(offset) ? +offset : 0;
+    length = Math.min(this.length, length+offset, source.length);
+    var target = this.subarray(offset, offset.length).typed('Uint8');
+    for (var i=0; i<length; i++) {
+      target[i] = source[i];
+    }
+    return this;
+  },
+
   map: function(){
     return [].map.apply(this.typed('Uint8'), arguments);
   },
@@ -1610,6 +1621,7 @@ Object.defineProperty(module, 'exports', {
   set: function(v){ imports['./index'] = v }
 });
 
+
 var genesis      = require('./genesis');
 var DataBuffer   = require('./buffer');
 var NumericType  = require('./numeric');
@@ -1617,8 +1629,7 @@ var StructType   = require('./struct');
 var ArrayType    = require('./array');
 var BitfieldType = require('./bitfield');
 var CharType     = require('./string');
-
-
+var PointerType  = require('./pointer');
 
 module.exports = reified;
 
@@ -1702,6 +1713,8 @@ genesis.api(reified, {
   ArrayType:    ArrayType,
   BitfieldType: BitfieldType,
   DataBuffer:   DataBuffer,
+  CharType:     CharType,
+  PointerType:  PointerType,
   toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
 });
 
@@ -1724,6 +1737,15 @@ function octets(){ return new OctetString(this._data, this._offset) }
 NumericType.Uint64.prototype.octets = octets;
 NumericType.Int64.prototype.octets = octets;
 
+var buf = new DataBuffer(50);
+buf.write(Array.apply(null, Array(50)).map(function(a,i){ return i * 3 }));
+
+var RGB = reified('RGB', {R:'Uint8', G: 'Uint8', B: 'Uint8' });
+var x = new PointerType('RGB[10]')
+
+var z = new x(buf);
+z.setRelative(20);
+console.log(z);
 
 
 }({}, function(n){ return imports[n] });
