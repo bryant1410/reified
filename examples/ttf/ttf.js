@@ -38,14 +38,17 @@ function inspect(o){ console.log(require('util').inspect(o, false, 6)) }
 
 
 
-
 function Font(buffer, filename){
   this.filename = filename;
   this.name = filename.slice(0, -path.extname(filename).length);
 
   // FontIndex is the entry point
   this.index = new FontIndex(buffer);
+
+  // initialize tables using table count from the index
   this.tables = new TableHead[this.index.tableCount](buffer, this.index.bytes);
+
+  // loop through the tables casting the pointer to the correct struct type based on tag
   this.tables.forEach(function(table){
     var tag = table.tag.reify();
     if (tag in TableTypes) {
@@ -55,6 +58,15 @@ function Font(buffer, filename){
 
   inspect(this.reify());
 }
+
+// convenience function to automatically reify any structs put onto the container
+Font.prototype.reify = function reify(){
+  return Object.keys(this).reduce(function(r,s){
+    r[s] = this[s].reify ? this[s].reify() : this[s];
+    return r;
+  }.bind(this), {});
+}
+
 
 Font.fontFolder = ({
   win32:  '/Windows/fonts',
@@ -73,36 +85,30 @@ Font.load = function load(filename){
   }
 }
 
-Font.prototype.reify = function reify(){
-  return Object.keys(this).reduce(function(r,s){
-    r[s] = this[s].reify ? this[s].reify() : this[s];
-    return r;
-  }.bind(this), {});
-}
 
 
 // ###########################
 // ### Commonly used Types ###
 // ###########################
 
-var Point = new StructT('Point', {
+var Point = StructT('Point', {
   x: Int16,
   y: Int16
 });
 
-var Metrics = new StructT('Metrics', {
+var Metrics = StructT('Metrics', {
   size: Point,
   position: Point
 });
 
-var LongDateTime = new StructT('LongDateTime', {
+var LongDateTime = StructT('LongDateTime', {
   lo: Uint32,
   hi: Uint32
 });
 
-var Tag = new CharT(4);
+var Tag = CharT(4);
 
-var Version = new ArrayT('Version', Uint8, 4);
+var Version = ArrayT('Version', Uint8, 4);
 
 Version.prototype.reify = function(){
   return this.join('');
@@ -113,8 +119,8 @@ Version.prototype.reify = function(){
 // ###############################################################################
 
 
-var FontIndex = new StructT('FontIndex', {
-  version    : new ArrayT('TTFVersion', 'Uint8', 4),
+var FontIndex = StructT('FontIndex', {
+  version    : ArrayT('TTFVersion', 'Uint8', 4),
   tableCount : Uint16,
   range      : Uint16,
   selector   : Uint16,
@@ -130,7 +136,7 @@ FontIndex.fields.version.prototype.reify = function(){
 // ### After the FontIndex are TableHeads with pointers to each table ###
 // ######################################################################
 
-var TableHead = new StructT('Table', {
+var TableHead = StructT('Table', {
   tag        : Tag,
   checksum   : Uint32,
   contents   : reified.VoidPtr,
@@ -140,79 +146,11 @@ var TableHead = new StructT('Table', {
 var TableTypes = {};
 
 
-// ##################################################################################
-// ### OS2 is the 'compatability' table containing a lot of useful stats and info ###
-// ##################################################################################
+// ##################################################################
+// ### Head contains general font metrics and important constants ###
+// ##################################################################
 
-// ### PANOSE is a set of 10 bitfields whose mapping is in labels.json ###
-Object.keys(labels.panose).forEach(function(label){
-  labels.panose[label] = new BitfieldT(label, labels.panose[label], 1);
-});
-
-// ### Unicode pages are 4 bitfields mapping to blocks which map to ranges, labels.json ###
-var UnicodePages = new StructT('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
-  ret[index] = new BitfieldT('UnicodePages'+index, blocks, 4);
-
-  ret[index].prototype.reify = function(){
-    return flatten(reified.reify(this).map(function(s){
-      return s.split(',').map(function(ss){ return labels.unicodeRanges[ss] });
-    }));
-  }
-
-  return ret;
-}, {}));
-
-UnicodePages.prototype.reify = function(){
-  var ret = reified.reify(this);
-  return Object.keys(ret).reduce(function(r,s){
-    return r.concat(ret[s]);
-  }, []).sort();
-}
-
-TableTypes['OS/2'] = new StructT('OS2', {
-  version      : Uint16,
-  avgCharWidth : Int16,
-  weightClass  : Uint16,
-  widthClass   : Uint16,
-  typer        : Uint16,
-  subscript    : Metrics,
-  superscript  : Metrics,
-  strikeout    : new StructT('Strikeout',
-  { size         : Int16,
-    position     : Int16 }),
-  class        : Int8[2],
-  panose       : new StructT('PANOSE', labels.panose),
-  unicodePages : UnicodePages,
-  vendorID     : Tag,
-  selection    : Uint16,
-  firstChar    : Uint16,
-  lastChar     : Uint16,
-  typographic  : new StructT('Typographic',
-  { ascender     : Int16,
-    descender    : Int16,
-    lineGap      : Int16 }),
-  winTypograph : new StructT('WindowsTypographic',
-  { ascender     : Uint16,
-    descender    : Uint16 }),
-  codePages1   : new BitfieldT('CodePages1', labels.codePageNames[0], 4),
-  codePages2   : new BitfieldT('CodePages2', labels.codePageNames[1], 4),
-  xHeight      : Int16,
-  capHeight    : Int16,
-  defaultChar  : Uint16,
-  breakChar    : Uint16,
-  maxContext   : Uint16
-});
-
-TableTypes['OS/2'].prototype.reify = function(){
-  var val = reified.reify(this);
-  val.weightClass = labels.weights[val.weightClass / 100 - 1];
-  val.widthClass = labels.widths[val.widthClass - 1];
-  val.vendorID in vendors && (val.vendorID = vendors[val.vendorID]);
-  return val;
-};
-
-
-TableTypes.head = new StructT('Head', {
+TableTypes.head = StructT('Head', {
   version          : Version,
   fontRevision     : Int32 ,
   checkSumAdj      : Uint32,
@@ -231,13 +169,92 @@ TableTypes.head = new StructT('Head', {
 });
 
 
-var NameIndex = new StructT('NameIndex', {
+// ##################################################################################
+// ### OS2 is the 'compatability' table containing a lot of useful stats and info ###
+// ##################################################################################
+
+// ### PANOSE is a set of 10 bitfields whose mapping is in labels.json ###
+Object.keys(labels.panose).forEach(function(label){
+  labels.panose[label] = BitfieldT(label, labels.panose[label], 1);
+});
+
+// ### Unicode pages are 4 bitfields mapping to blocks which map to ranges, labels.json ###
+var UnicodePages = StructT('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
+  // custome reify function for mapping the code pages to their names, then flattening all the arrays
+
+  ret[index] = BitfieldT('UnicodePages'+index, blocks, 4);
+
+  ret[index].prototype.reify = function(){
+    return flatten(reified.reify(this).map(function(s){
+      return s.split(',').map(function(ss){
+        return labels.unicodeRanges[ss];
+      });
+    }));
+  }
+
+  return ret;
+}, {}));
+
+UnicodePages.prototype.reify = function(){
+  // flattens all the pages into a single array
+  var ret = reified.reify(this);
+  return Object.keys(ret).reduce(function(r,s){
+    return r.concat(ret[s]);
+  }, []).sort();
+}
+
+TableTypes['OS/2'] = StructT('OS2', {
+  version      : Uint16,
+  avgCharWidth : Int16,
+  weightClass  : Uint16,
+  widthClass   : Uint16,
+  typer        : Uint16,
+  subscript    : Metrics,
+  superscript  : Metrics,
+  strikeout    : StructT('Strikeout',
+  { size         : Int16,
+    position     : Int16 }),
+  class        : Int8[2],
+  panose       : StructT('PANOSE', labels.panose),
+  unicodePages : UnicodePages,
+  vendorID     : Tag,
+  selection    : Uint16,
+  firstChar    : Uint16,
+  lastChar     : Uint16,
+  typographic  : StructT('Typographic',
+  { ascender     : Int16,
+    descender    : Int16,
+    lineGap      : Int16 }),
+  winTypograph : StructT('WindowsTypographic',
+  { ascender     : Uint16,
+    descender    : Uint16 }),
+  codePages1   : BitfieldT('CodePages1', labels.codePageNames[0], 4),
+  codePages2   : BitfieldT('CodePages2', labels.codePageNames[1], 4),
+  xHeight      : Int16,
+  capHeight    : Int16,
+  defaultChar  : Uint16,
+  breakChar    : Uint16,
+  maxContext   : Uint16
+});
+
+TableTypes['OS/2'].prototype.reify = function(){
+  var val = reified.reify(this);
+  val.weightClass = labels.weights[val.weightClass / 100 - 1];
+  val.widthClass = labels.widths[val.widthClass - 1];
+  val.vendorID in vendors && (val.vendorID = vendors[val.vendorID]);
+  return val;
+};
+
+
+
+
+var NameIndex = StructT('NameIndex', {
   format     : Uint16,
   length     : Uint16,
   contents : Uint16
 });
 
-var NameRecord = new StructT('NameRecord', {
+var NameRecord = StructT('NameRecord', {
   platformID : Uint16,
   encodingID : Uint16,
   languageID : Uint16,
