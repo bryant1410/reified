@@ -275,12 +275,11 @@ var types = {};
 module.exports = {
   Type: Type,
   Subtype: Subtype,
+  OpaqueType: OpaqueType,
   lookupType: lookupType,
   registerType: registerType,
   types: types,
-  isBuffer: function(o){
-    return DataBuffer.isBuffer(o) || DataBuffer.isDataBuffer(o);
-  },
+  isBuffer: isBuffer,
   api: api,
   nullable: function(object, key){
     Object.defineProperty(object, key, nullable);
@@ -290,6 +289,13 @@ module.exports = {
 
 var nullable = { value: undefined, writable: true, configurable: true };
 var hidden = { configurable: true, writable: true, value: 0 };
+
+
+
+function isBuffer(o){
+  return DataBuffer.isBuffer(o) || DataBuffer.isDataBuffer(o);
+}
+
 
 function api(o, n, v){
   if (Object(n) === n) {
@@ -361,7 +367,6 @@ function lookupType(name, label){
 // ### Genesis for Type ###
 // ########################
 
-var superTypes = {};
 
 function createType(name, a, b, c){
   var type = require('./'+name);
@@ -369,27 +374,41 @@ function createType(name, a, b, c){
 }
 
 function Type(ctor, proto){
-  ctor.prototype = eval('(function Empty'+ctor.name.replace(/Type$/,'T')+'(){})');
-  if (hasProto) {
-    ctor.prototype.__proto__ = Type;
-  } else {
-    copy(Type, ctor.prototype);
-  }
+  ctor.prototype = Super(eval('(function Empty'+ctor.name.replace(/Type$/,'T')+'(){})'), Type);
   ctor.prototype.Type = ctor.name;
-  ctor.prototype.constructor = ctor;
-  if (typeof imports === 'undefined') {
-    ctor.prototype.inspect = require('./inspect')('Type', ctor.name);
-    proto.inspect = require('./inspect')('Data', ctor.name);
-  }
   ctor.prototype.prototype = copy(proto, Object.create(Data));
   types[ctor.name.replace(/Type$/,'')] = ctor;
+  inspectors(ctor.prototype, ctor.name);
+}
+
+function Super(ctor, superctor, proto){
+  if (hasProto) {
+    ctor.__proto__ = superctor;
+  } else {
+    copy(superctor, ctor);
+  }
+  ctor.prototype = proto || Object.create(superctor.prototype);
+  ctor.prototype.constructor = ctor;
+  //ctor.prototype.super = superctor;
+  return ctor;
+}
+
+function inspectors(obj, name){
+  if (typeof imports === 'undefined') {
+    obj.inspect = require('./inspect')('Type', name);
+    obj.prototype.inspect = require('./inspect')('Data', name);
+  }
 }
 
 copy({
   Class: 'Type',
-  toString: function toString(){ return '[object '+this.name+'Type]' },
-  array: function array(n){ return createType('array', this, n) },
+  //toString: function toString(){ return '[object '+this.name+'Type]' },
   isInstance: function isInstance(o){ return this.prototype.isPrototypeOf(o) },
+  array: function array(n){ return createType('array', this, n) },
+  typeDef: function typeDef(name){
+    var iface = createInterface(name, ifaceMap.get(this));
+    return Super(iface, this);
+  }
 }, Type);
 
 Array.apply(null, Array(20)).forEach(function(n, i){
@@ -400,30 +419,43 @@ Array.apply(null, Array(20)).forEach(function(n, i){
 });
 Object.defineProperty(Type, 'ptr', {
   configurable: true,
-  get: function(){ return createType('pointer', this) }
+  get: function(){ return createType('pointer', this.displayName, this) }
 });
 
-function createInterface(type, name, ctor){
-  var functionName = name.replace(/[^\w0-9_$]/g, '');
+var ifaceMap = function(){
+  var ifaces = [];
+  var ctors = [];
+  return {
+    set: function(iface, ctor){
+      ifaces.push(iface);
+      ctors.push(ctor);
+      return iface;
+    },
+    get: function(iface){
+      var index = ifaces.indexOf(iface);
+      return ~index ? ctors[index] : null;
+    }
+  }
+}();
+
+function createInterface(name, ctor, type){
+  var fnName = name.replace(/[^\w0-9_$]/g, '');
   if (name[0] === '*') {
     var count = name.match(/^[*]+/)[0].length;
-    functionName = Array(count + 1).join('Ptr_') + functionName;
+    fnName = Array(count + 1).join('Ptr_') + fnName;
   }
-  var src = 'return function '+functionName+'(data, offset, values){ return new '+functionName+'Ctor(data, offset, values) }';
-  var iface = Function(functionName+'Ctor', src)(ctor);
+  var src = 'return function '+fnName+'(data, offset, values){ return Ctor.call(Object.create('+fnName+'.prototype), data, offset, values) }';
+  var iface = Function('Ctor', src)(ctor);
 
-  api(iface, 'rename', function rename(name){
-    return ctor.prototype.constructor = createInterface(type, name, ctor);
-  })
-  api(iface, 'displayName', name);
+  ifaceMap.set(iface, ctor);
 
-  if (hasProto) {
-    iface.__proto__ = type.prototype;
-  } else {
-    copy(type, iface);
+  if (type) {
+    if (hasProto) iface.__proto__ = type.prototype;
+    else copy(type, iface);
   }
 
   iface.prototype = ctor.prototype;
+  api(iface, 'displayName', name);
 
   if (name) registerType(name, iface);
   return copy(ctor, iface);
@@ -433,7 +465,7 @@ function Subtype(name, bytes, ctor){
   ctor.bytes = bytes;
   ctor.prototype.bytes = bytes;
   ctor.prototype = copy(ctor.prototype, Object.create(this.prototype.prototype));
-  return ctor.prototype.constructor = createInterface(this, name, ctor);
+  return ctor.prototype.constructor = createInterface(name, ctor, this);
 }
 
 
@@ -472,11 +504,61 @@ var Data = Type.prototype = {
     align = (type.bytes === this.bytes || !align) ? 0 : align < 0 ? this.bytes-type.bytes : +align;
     return new type(this._data, this._offset + align);
   },
-  ptr: function ptr(){
-    var pointerType = lookupType('*'+this.constructor.displayName);
-    return new pointerType(this);
+  pointer: function pointer(){
+    var PtrType = lookupType('*'+this.constructor.displayName);
+    return new PtrType(this);
   }
 };
+
+
+
+
+function Opaque(data, offset, size){
+  if (isFinite(data)) {
+    size = data;
+    data = null;
+    if (!isFinite(size)) {
+      throw new Error('Opaque types must be given a size or buffer');
+    }
+  }
+  this.bytes = size || 0;
+  this.rebase(data);
+  api(this, '_offset', +offset || 0);
+
+  return this;
+}
+
+Super(Opaque, Type);
+ifaceMap.set(Opaque, Opaque);
+registerType('Opaque', Opaque);
+inspectors(Opaque, 'Opaque');
+api(Opaque, 'displayName', 'Opaque');
+
+Opaque.prototype.DataType = 'opaque';
+Opaque.prototype.reify = function reify(){
+  //return this._data;
+}
+
+Opaque.prototype.write = function write(){
+  throw new Error('Opaque data must be cast to a specific type before it can be written to');
+}
+
+Opaque.prototype.rebase = function rebase(buffer){
+  if (buffer != null) {
+    Data.rebase.call(this, buffer);
+  }
+}
+
+function OpaqueType(size){
+  function OpaqueT(data, offset){
+    Opaque.call(this, data, offset, size);
+  }
+  Super(OpaqueT, Opaque);
+  OpaqueT.bytes = size;
+  return OpaqueT;
+}
+
+
 
 
 function copy(from, to, hidden){
@@ -487,6 +569,8 @@ function copy(from, to, hidden){
   });
   return to;
 }
+
+
 
 
 }({}, function(n){ return imports[n] });
@@ -580,6 +664,7 @@ function NumericType(name, bytes){
       this.write(value);
     }
     //this.emit('construct');
+    return this;
   }
 
   // #####################
@@ -612,6 +697,12 @@ function NumericType(name, bytes){
 genesis.Type(NumericType, {
   DataType: 'numeric',
   fill: function fill(v){ this.write(0, v || 0) },
+  valueOf: function valueOf(){
+    return this.reify();
+  },
+  toString: function toString(){
+    return String(this.reify());
+  },
 });
 
 
@@ -679,6 +770,7 @@ function StructType(name, fields){
         field in fields && initField(this, StructT, field).write(values[field]);
      }, this);
     }
+    return this;
     //this.emit('construct');
   }
 
@@ -818,6 +910,7 @@ function ArrayType(name, MemberType, length) {
     values && Object.keys(values).forEach(function(i){
       initIndex(this, this.constructor.memberType, i).write(values[i]);
     }, this);
+    return this;
     //this.emit('construct');
   }
 
@@ -1000,6 +1093,7 @@ function BitfieldType(name, flags, bytes){
     } else if (Object(values) === values){
       Object.keys(values).forEach(function(key){ this[key] = values[key] }, this);
     }
+    return this;
     //this.emit('construct');
   };
 
@@ -1124,6 +1218,9 @@ var PointerSubtype = genesis.Subtype.bind(PointerType);
 
 module.exports = PointerType;
 
+
+var Address = numeric.Uint32.typeDef('Address');
+
 // ###############################
 // ### PointerType Constructor ###
 // ###############################
@@ -1141,9 +1238,10 @@ function PointerType(name, pointeeType, addressType){
     pointeeType = genesis.lookupType(name);
   }
 
-  addressType = addressType || numeric.Uint32;
   if (typeof addressType === 'string') {
     addressType = genesis.lookupType(addressType);
+  } else if (typeof addressType === 'undefined') {
+    addressType = Address;
   }
 
   name = '*'+name;
@@ -1161,14 +1259,16 @@ function PointerType(name, pointeeType, addressType){
 
     genesis.api(this, '_offset', +offset || 0);
 
-    this.address = new addressType(this._data, this._offset);
+    this.address = new PointerT.addressType(this._data, this._offset);
 
     if (isFinite(values)) {
-      this.setRelative(values);
+      this.memory = this._data;
+      this.address.write(values);
     } else if (values && values._data) {
       this.pointTo(values);
     }
 
+    return this;
     //this.emit('construct');
   }
 
@@ -1236,7 +1336,10 @@ function resolveBuffer(buffer){
 
 genesis.Type(PointerType, {
   DataType: 'pointer',
-  bytes: 4,
+
+  get bytes(){
+    return this.constructor.addressType.bytes;
+  },
 
   reify: function reify(deallocate){
     return this.pointee.reify(deallocate);
@@ -1250,22 +1353,31 @@ genesis.Type(PointerType, {
     this.pointee.fill(val);
   },
 
-  setRelative: function setRelative(offset){
-    var info = resolveBuffer(this);
-    this.address.write(info.offset + offset);
-    this.memory = info.buffer;
-  },
-
   pointTo: function pointTo(data){
     if (!data._data) throw new TypeError('Must point to reified <Data>');
-    //var info = resolveBuffer(data);
     this.pointee = data;
     this.address.write(data._offset);
     this.memory = data._data;
   },
+  cast: function cast(type){
+    if (typeof type === 'string') {
+      type = genesis.lookupType(type);
+    }
+    var ptrType = genesis.lookupType('*'+type.displayName);
+    var ptr = new ptrType(this._data, this._offset);
+    ptr.memory = this.memory;
+    return ptr;
+  }
 });
 
-PointerType.prototype.bytes = 4;
+Object.defineProperty(PointerType.prototype, 'bytes', {
+  configurable: true,
+  enumerable: true,
+  get: function(){
+    return this.addressType.bytes;
+  }
+});
+
 
 }({}, function(n){ return imports[n] });
 
@@ -1333,6 +1445,7 @@ function CharArrayType(data, offset, value){
 
       value && this.write(value);
       //this.emit('construct');
+      return this;
     });
     CharArray.bytes = bytes;
     CharArray.prototype.bytes = bytes;
@@ -1384,6 +1497,7 @@ function Char(data, offset, value){
   if (value != null) {
     this.write(value);
   }
+  return this;
   //this.emit('construct');
 }
 Char.prototype = {
@@ -1435,6 +1549,7 @@ var ArrayType    = require('./array');
 var BitfieldType = require('./bitfield');
 var CharType     = require('./string');
 var PointerType  = require('./pointer');
+var OpaqueType   = genesis.OpaqueType;
 
 module.exports = reified;
 
@@ -1520,8 +1635,12 @@ genesis.api(reified, {
   DataBuffer:   DataBuffer,
   CharType:     CharType,
   PointerType:  PointerType,
+  OpaqueType:   OpaqueType,
+  VoidPtr:      reified('Opaque').ptr.typeDef('VoidPtr'),
   toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
 });
+
+
 
 function isSame(arr1, arr2){
   return !diff(arr1, arr2).length;
