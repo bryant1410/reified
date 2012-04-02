@@ -363,15 +363,15 @@ function lookupType(name, label){
 }
 
 
-// ########################
-// ### Genesis for Type ###
-// ########################
-
-
 function createType(name, a, b, c){
   var type = require('./'+name);
   return new type(a, b, c);
 }
+
+// ########################
+// ### Genesis for Type ###
+// ########################
+
 
 function Type(ctor, proto){
   ctor.prototype = Super(eval('(function Empty'+ctor.name.replace(/Type$/,'T')+'(){})'), Type);
@@ -417,6 +417,7 @@ Array.apply(null, Array(20)).forEach(function(n, i){
     get: function(){ return this.array(i) }
   });
 });
+
 Object.defineProperty(Type, 'ptr', {
   configurable: true,
   get: function(){ return createType('pointer', this.displayName, this) }
@@ -451,7 +452,7 @@ function createInterface(name, ctor, type){
 
   if (type) {
     if (hasProto) iface.__proto__ = type.prototype;
-    else copy(type, iface);
+    else copy(type.prototype, iface);
   }
 
   iface.prototype = ctor.prototype;
@@ -537,6 +538,7 @@ api(Opaque, 'displayName', 'Opaque');
 Opaque.prototype.DataType = 'opaque';
 Opaque.prototype.reify = function reify(){
   //return this._data;
+  return null;
 }
 
 Opaque.prototype.write = function write(){
@@ -963,6 +965,7 @@ genesis.Type(ArrayType, {
   forEach: Array.prototype.forEach,
   reduce: Array.prototype.reduce,
   map: Array.prototype.map,
+  join: Array.prototype.join,
 
   reify: function reify(deallocate){
     this.reified = [];
@@ -1113,7 +1116,9 @@ function BitfieldType(name, flags, bytes){
     }
   };
 
-  return defineFlags(BitfieldSubtype(name, bytes, BitfieldT));
+  var out = BitfieldSubtype(name, bytes, BitfieldT);
+  
+  return defineFlags(out);
 }
 
 
@@ -1218,8 +1223,8 @@ var PointerSubtype = genesis.Subtype.bind(PointerType);
 
 module.exports = PointerType;
 
-
 var Address = numeric.Uint32.typeDef('Address');
+
 
 // ###############################
 // ### PointerType Constructor ###
@@ -1261,11 +1266,13 @@ function PointerType(name, pointeeType, addressType){
 
     this.address = new PointerT.addressType(this._data, this._offset);
 
-    if (isFinite(values)) {
+    if (typeof values === 'number') {
       this.memory = this._data;
       this.address.write(values);
     } else if (values && values._data) {
       this.pointTo(values);
+    } else {
+      this.memory = this._data;
     }
 
     return this;
@@ -1295,21 +1302,19 @@ function initPointee(target, Type, pointee){
       target.address.write(address = pointee._offset);
     }
   } else {
-    address = pointee._offset;
+    address = target.address.reify();
   }
   Object.defineProperty(target, 'pointee', {
     enumerable: true, configurable: true,
     get: function(){
-      var checkaddress = target.address.reify();
-      if (address !== checkaddress) {
-        pointee.rebase(checkaddress);
+      if (target.address.reify() !== address) {
+        pointee.realign(address);
       }
       return pointee;
     },
     set: function(v){
-      var checkaddress = target.address.reify();
-      if (address !== checkaddress) {
-        pointee.rebase(checkaddress);
+      if (target.address.reify() !== address) {
+        pointee.realign(address);
       }
       pointee.write(v);
     }
@@ -1317,18 +1322,6 @@ function initPointee(target, Type, pointee){
   return pointee;
 }
 
-function resolveBuffer(buffer){
-  var offset = 0;
-  if (buffer._data) {
-    offset = buffer._offset;
-    buffer = buffer._data;
-  }
-  while (buffer.buffer || buffer.parent) {
-    offset += (buffer.offset || buffer.bytesOffset || 0);
-    buffer = buffer.buffer || buffer.parent;
-  }
-  return { buffer: buffer, offset: offset };
-}
 
 // ########################
 // ### PointerType Data ###
@@ -1363,10 +1356,10 @@ genesis.Type(PointerType, {
     if (typeof type === 'string') {
       type = genesis.lookupType(type);
     }
-    var ptrType = genesis.lookupType('*'+type.displayName);
-    var ptr = new ptrType(this._data, this._offset);
-    ptr.memory = this.memory;
-    return ptr;
+    genesis.nullable(this, 'pointee');
+    this.__proto__ = type.ptr.prototype;
+
+    return this;
   }
 });
 
@@ -1396,9 +1389,9 @@ var genesis = require('./genesis');
 var DataBuffer  = require('./buffer');
 var numeric = require('./numeric');
 var ArrayType = require('./array');
-var StringSubtype = genesis.Subtype.bind(CharArrayType);
+var CharSubtype = genesis.Subtype.bind(CharType);
 
-module.exports = CharArrayType;
+module.exports = CharType;
 
 
 var char = String.fromCharCode;
@@ -1418,12 +1411,13 @@ var ucs2 = function(){
       return v >= o ? char((v -= o) >>> 10 & a | z) + char(y | v & a) : char(v);
     }
   }
-}()
+}();
+
 
 
 var cache = [];
 
-function CharArrayType(data, offset, value){
+function CharType(data, offset, value){
   var length;
   if (typeof data === 'number') {
     length = data;
@@ -1438,7 +1432,7 @@ function CharArrayType(data, offset, value){
   var bytes = length;
 
   if (!(bytes in cache)) {
-    var CharArray = StringSubtype('CharArray'+bytes, bytes, function CharArray(data, offset, value){
+    var CharArray = cache[bytes] = CharSubtype('CharArray'+bytes, bytes, function CharArray(data, offset, value){
       if (!data) data = new DataBuffer(this.bytes);
       this.rebase(data);
       genesis.api(this, '_offset', offset || 0);
@@ -1449,7 +1443,7 @@ function CharArrayType(data, offset, value){
     });
     CharArray.bytes = bytes;
     CharArray.prototype.bytes = bytes;
-    cache[bytes] = CharArray;
+    CharArray.prototype.length = bytes;
   } else {
     var CharArray = cache[bytes];
   }
@@ -1462,28 +1456,33 @@ function CharArrayType(data, offset, value){
   }
 }
 
-genesis.Type(CharArrayType, {
+
+
+genesis.Type(CharType, {
   DataType: 'string',
   Subtype: 'CharArray',
+  bits: 8,
+  join: Array.prototype.join,
+  map: Array.prototype.map,
   fill: function fill(v){ this.write(0, v || 0) },
   reify: function reify(){
     return this._data.subarray(this._offset, this.bytes).map(function(str){
-      return  ucs2(str);
-    });
+      return ucs2(str);
+    }).join('');
   },
   write: function write(value, index){
     var isString = typeof value === 'string';
     if (isFinite(index)) {
       if (isString) value = ucs2(value);
-      this._data.writeUint8(index, value);
+      this._data['writeUint'+this.bits](index, value);
     } else if (typeof value === 'string' || value && 'length' in value) {
-      for (var i=0; i<value.length && i<this.bytes; i++) {
-        this._data.writeUint8(this._offset+i, ucs2(value[i]));
+      var bytesPer = this.bits / 8;
+      for (var i=0; i<value.length && i<this.length; i++) {
+        this._data['writeUint'+this.bits](this._offset+i*bytesPer, ucs2(value[i]));
       }
     }
   },
 });
-
 
 
 function Char(data, offset, value){
@@ -1500,33 +1499,35 @@ function Char(data, offset, value){
   return this;
   //this.emit('construct');
 }
+
 Char.prototype = {
   length: 1,
   Subtype: 'CharArray',
   bytes: 1,
   write: function write(v, i){
-    this._data.writeUint8(this._offset, typeof v === 'string' ? ucs2(v[i || 0]) : v);
+    this._data['writeUint'+this.bits](this._offset, typeof v === 'string' ? ucs2(v[i || 0]) : v);
     return this;
   },
   reify: function reify(deallocate){
-    var val = this.reified =  ucs2(this._data.readUint8(this._offset, 1));
+    var val = this.reified =  ucs2(this._data['readUint'+this.bits](this._offset, 1));
     //this.emit('reify', val);
     val = this.reified;
     delete this.reified;
     return val;
   },
   toNumber: function toNumber(v){
-    return this._data.readUint8(this._offset);
+    return this._data['readUint'+this.bits](this._offset);
   }
 };
 
-Char.__proto__ = CharArrayType.prototype;
-Char.constructor = CharArrayType;
-Char.prototype.__proto__ = CharArrayType.prototype.prototype;
+Char.__proto__ = CharType.prototype;
+Char.constructor = CharType;
+Char.prototype.__proto__ = CharType.prototype.prototype;
 Char.bytes = Char.prototype.bytes = Char.prototype.length = 1
 Char.prototype.constructor = Char;
 
 cache[1] = Char;
+
 
 }({}, function(n){ return imports[n] });
 
@@ -1571,7 +1572,6 @@ function reified(type, subject, size, values){
     if (typeof subject === 'string' || subject.Class === 'Type') {
       return new reified.ArrayType(type, subject, size);
     } else if (typeof type === 'undefined') {
-      console.log(subject)
     } else if (Array.isArray(subject) || typeof subject === 'number') {
       return new reified.BitfieldType(type, subject, size);
     } else {
@@ -1607,7 +1607,10 @@ reified.data = function data(type, buffer, offset, values){
 }
 
 reified.reify = function reify(data){
-  return Object.getPrototypeOf(data).reify.call(data);
+  if (data.Class === 'Data') {
+    var proto = Object.getPrototypeOf(data.constructor).prototype;
+  }
+  return proto.reify.call(data);
 }
 
 reified.isType = function isType(o){ return genesis.Type.isPrototypeOf(o) }
