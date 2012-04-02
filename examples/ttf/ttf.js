@@ -45,13 +45,15 @@ function Font(buffer, filename){
 
   // FontIndex is the entry point
   this.index = new FontIndex(buffer);
-  this.tables = new Table[this.index.tableCount](buffer, this.index.bytes);
-  //inspect(this.index.constructor);
-  //inspect(this.index)
-  //var reified = this.index.reify(true);
-  
-  //inspect(this.index)
-  inspect(this)
+  this.tables = new TableHead[this.index.tableCount](buffer, this.index.bytes);
+  this.tables.forEach(function(table){
+    var tag = table.tag.reify();
+    if (tag in TableTypes) {
+      table.contents.cast(TableTypes[tag]);
+    }
+  })
+
+  inspect(this.reify());
 }
 
 Font.fontFolder = ({
@@ -71,150 +73,17 @@ Font.load = function load(filename){
   }
 }
 
-
-
-// TTF Version
-var TTFVersion = new ArrayT('TTFVersion', Uint8, 4);
-
-// interceptor on reify that translates the value
-// TTFVersion.prototype.on('reify', function(val){
-//   val = val.join('');
-//   this.reified = val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
-// });
-
-
-// ###############################################################################
-// ### FontIndex starts the file and tells the number of Tables in the Index  ####
-// ###############################################################################
-
-var FontIndex = new StructT('FontIndex', {
-  version    : TTFVersion,
-  tableCount : Uint16,
-  range      : Uint16,
-  selector   : Uint16,
-  shift      : Uint16
-});
-
-// On construct we can inspect the tableCount provided by FontIndex and then add in
-// the Index, which is an array o
-// FontIndex.prototype.on('construct', function(){
-//   Index(this.tableCount.reify(), this);
-// });
-
-
-
-// A Tag is a 4 byte string label. reified needs some built in string types
-
-var Tag = new CharT(4);
-
-
-var Table = new StructT('Table', {
-  tag        : Tag,
-  checksum   : Uint32,
-  byteOffset : reified.VoidPtr,
-  length     : Uint32
-});
-
-// On table construct we can map the byteOffset pointer to the data location and initialize a struct on it
-// Table.prototype.on('construct', function(){
-//   var tag = this.tag.reify();
-//   switch (tag) {
-//     case 'OS/2':
-//       // this is a pointer, there needs to be a way to represent this
-//       this.table = new OS2(this._data, this.byteOffset.reify());
-//       break;
-//     default:
-//   }
-// });
-
-// on reify we have to bring the values together manually due to a lack of pointer support in reified
-// Table.prototype.on('reify', function(){
-//   if (this.table) {
-//     this.reified.table = this.table.reify();
-//   }
-// })
-
-
-
-// ####################################################################################
-// ### The TableIndex is an array of Tables that have some basic info and a pointer ###
-// ####################################################################################
-
-function Index(tableCount, fontIndex){
- 
-
-  TableIndex.prototype.on('reify', function(val){
-    this.reified = val.reduce(function(ret, item){
-      var label = labels.tables[item.tag];
-      if (label) label = label.replace(/\s/g, '_');
-      ret[label|| item.tag] = item;
-      return ret;
-    }, {});
-  });
-
-  // cludge to append on a dynamically sized array. This needs an API
-  fontIndex.constructor.keys.push('tables');
-  fontIndex.constructor.offsets.tables = fontIndex.bytes;
-  fontIndex.constructor.fields.tables = TableIndex;
-  fontIndex.bytes = fontIndex.constructor.bytes = fontIndex.bytes + TableIndex.bytes;
-  Object.defineProperty(fontIndex.constructor.prototype, 'tables', {
-    enumerable: true,
-    configurable: true,
-    get: function(){ return initField(this, fontIndex.constructor, 'tables') },
-    set: function(v){ initField(this, fontIndex.constructor, 'tables').write(v) }
-  });
-}
-
-function initField(target, ctor, field){
-  var block = new ctor.fields[field](target._data, target._offset + ctor.offsets[field]) ;
-  Object.defineProperty(target, field, {
-    enumerable: true,
-    configurable: true,
-    get: function(){ return block },
-    set: function(v){
-      if (v === null) {
-        this.emit('deallocate', field);
-        Object.defineProperty(this, field, { writable: true, configurable: true, value: undefined });
-        delete this[field];
-        block = null;
-      } else {
-        block.write(v);
-      }
-    }
-  });
-  return block;
+Font.prototype.reify = function reify(){
+  return Object.keys(this).reduce(function(r,s){
+    r[s] = this[s].reify ? this[s].reify() : this[s];
+    return r;
+  }.bind(this), {});
 }
 
 
-
-// #######################################################################
-// ### PANOSE is a set of 10 bitfields whose mapping is in labels.json ###
-// #######################################################################
-
-Object.keys(labels.panose).forEach(function(label){
-  labels.panose[label] = new BitfieldT(label, labels.panose[label], 1);
-});
-var PANOSE = new StructT('PANOSE', labels.panose);
-
-
-// ########################################################################################
-// ### Unicode pages are 4 bitfields mapping to blocks which map to ranges, labels.json ###
-// ########################################################################################
-
-var UnicodePages = new StructT('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
-  ret[index] = new BitfieldT('UnicodePages'+index, blocks, 4);
-  // ret[index].prototype.on('reify', function(val){
-  //   this.reified = flatten(val.map(function(s){
-  //     return s.split(',').map(function(ss){ return labels.unicodeRanges[ss] });
-  //   }));
-  // });
-  return ret;
-}, {}));
-
-// UnicodePages.prototype.on('reify', function(val){
-//   this.reified = flatten(Object.keys(val).map(function(s){ return val[s] })).filter(Boolean);
-// });
-
+// ###########################
+// ### Commonly used Types ###
+// ###########################
 
 var Point = new StructT('Point', {
   x: Int16,
@@ -231,12 +100,76 @@ var LongDateTime = new StructT('LongDateTime', {
   hi: Uint32
 });
 
+var Tag = new CharT(4);
+
+var Version = new ArrayT('Version', Uint8, 4);
+
+Version.prototype.reify = function(){
+  return this.join('');
+}
+
+// ###############################################################################
+// ### FontIndex starts the file and tells the number of Tables in the Index  ####
+// ###############################################################################
+
+
+var FontIndex = new StructT('FontIndex', {
+  version    : new ArrayT('TTFVersion', 'Uint8', 4),
+  tableCount : Uint16,
+  range      : Uint16,
+  selector   : Uint16,
+  shift      : Uint16
+});
+
+FontIndex.fields.version.prototype.reify = function(){
+  var val =  this.join('');
+  return val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
+}
+
+// ######################################################################
+// ### After the FontIndex are TableHeads with pointers to each table ###
+// ######################################################################
+
+var TableHead = new StructT('Table', {
+  tag        : Tag,
+  checksum   : Uint32,
+  contents   : reified.VoidPtr,
+  length     : Uint32
+});
+
+var TableTypes = {};
+
 
 // ##################################################################################
 // ### OS2 is the 'compatability' table containing a lot of useful stats and info ###
 // ##################################################################################
 
-var OS2 = new StructT('OS2', {
+// ### PANOSE is a set of 10 bitfields whose mapping is in labels.json ###
+Object.keys(labels.panose).forEach(function(label){
+  labels.panose[label] = new BitfieldT(label, labels.panose[label], 1);
+});
+
+// ### Unicode pages are 4 bitfields mapping to blocks which map to ranges, labels.json ###
+var UnicodePages = new StructT('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
+  ret[index] = new BitfieldT('UnicodePages'+index, blocks, 4);
+
+  ret[index].prototype.reify = function(){
+    return flatten(reified.reify(this).map(function(s){
+      return s.split(',').map(function(ss){ return labels.unicodeRanges[ss] });
+    }));
+  }
+
+  return ret;
+}, {}));
+
+UnicodePages.prototype.reify = function(){
+  var ret = reified.reify(this);
+  return Object.keys(ret).reduce(function(r,s){
+    return r.concat(ret[s]);
+  }, []).sort();
+}
+
+TableTypes['OS/2'] = new StructT('OS2', {
   version      : Uint16,
   avgCharWidth : Int16,
   weightClass  : Uint16,
@@ -248,7 +181,7 @@ var OS2 = new StructT('OS2', {
   { size         : Int16,
     position     : Int16 }),
   class        : Int8[2],
-  panose       : PANOSE,
+  panose       : new StructT('PANOSE', labels.panose),
   unicodePages : UnicodePages,
   vendorID     : Tag,
   selection    : Uint16,
@@ -269,21 +202,17 @@ var OS2 = new StructT('OS2', {
   breakChar    : Uint16,
   maxContext   : Uint16
 });
-console.log(OS2);
-// OS2.prototype.on('reify', function(val){
-//   val.weightClass = labels.weights[val.weightClass / 100 - 1];
-//   val.widthClass = labels.widths[val.widthClass - 1];
-//   val.vendorID in vendors && (val.vendorID = vendors[val.vendorID]);
-// });
+
+TableTypes['OS/2'].prototype.reify = function(){
+  var val = reified.reify(this);
+  val.weightClass = labels.weights[val.weightClass / 100 - 1];
+  val.widthClass = labels.widths[val.widthClass - 1];
+  val.vendorID in vendors && (val.vendorID = vendors[val.vendorID]);
+  return val;
+};
 
 
-
-
-// TODO Head, name indexes, etc.
-// need to address the issue with shared prototypes
-var Version = new ArrayT('Version', Uint8, 4);
-
-var Head = new StructT('Head', {
+TableTypes.head = new StructT('Head', {
   version          : Version,
   fontRevision     : Int32 ,
   checkSumAdj      : Uint32,
@@ -301,10 +230,11 @@ var Head = new StructT('Head', {
   glyphDataFormat  : Int16,
 });
 
+
 var NameIndex = new StructT('NameIndex', {
   format     : Uint16,
   length     : Uint16,
-  byteOffset : Uint16
+  contents : Uint16
 });
 
 var NameRecord = new StructT('NameRecord', {
@@ -313,7 +243,7 @@ var NameRecord = new StructT('NameRecord', {
   languageID : Uint16,
   nameID     : Uint16,
   length     : Uint16,
-  byteOffset : Uint16,
+  contents : Uint16,
 });
 
 //console.log(Font.listFonts());
