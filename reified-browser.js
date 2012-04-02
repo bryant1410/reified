@@ -1628,6 +1628,13 @@ Object.defineProperty(reified, 'defaultEndian', {
   }
 });
 
+
+// pointer that points to an unknown structure, which can be later cast to something
+var VoidPtr = reified('Opaque').ptr.typeDef('VoidPtr');
+VoidPtr.prototype.reify = function(){
+  return { type: VoidPtr, address: this.address.reify() };
+}
+
 // ## structures
 genesis.api(reified, {
   Type:         genesis.Type,
@@ -1639,7 +1646,7 @@ genesis.api(reified, {
   CharType:     CharType,
   PointerType:  PointerType,
   OpaqueType:   OpaqueType,
-  VoidPtr:      reified('Opaque').ptr.typeDef('VoidPtr'),
+  VoidPtr:      VoidPtr,
   toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
 });
 
