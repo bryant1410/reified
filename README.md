@@ -282,38 +282,6 @@ Value can be either a JS value/object with the same structure (keys, indices, nu
 * `<Bitfield>.toString` - String of the bits in 1's and 0's
 
 
-# Experimental EventEmitter API
-
-Currently a minimal event emitter API is implemented. It is still up for decision whether it will stay or not, based on performance impact and actual usefulness. Currently it's implemented with the goal of providing hooks into key processes, allowing modification of values. The example usage is when a field needs special treatment during reification, some special mapping to values not easily represented in reify's api. The following is from the TTF font format example:
-
-```javascript
-var TTFVersion = reified('TTFVersion', Uint8[4]);
-
-TTFVersion.prototype.on('reify', function(val){
-  val = val.join('');
-  this.reified = val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
-});
-```
-Before the event is emitted, the reified value is attached to the structure, such that it's possible to fully modify it just prior to it's finally returned. This allows arbitrary modification. The TTF example also uses it currently as a kind of jury rigged way to handle pointers/indirection, by forcibly reifying related but separate-in-memory values.
-
-The other event exposed is `<Data>.on('construct')`. This allows a similar connection of values where reified's api is lacking, like dynamically sized arrays based on a value read from memory. Ultimately a better API will be provided to solve some of these problems.However, it shows there's real potential value in having these the option to tap in.
-
-The emitter is attached on the primordial `Data` itself which allows the following:
-
-```javascript
-reified.Type.prototype.on('reify', function(){
-  console.log(this.constructor.name + ' reified');
-});
-reified.Type.prototype.on('construct', function(){
-  console.log(this.constructor.name + ' constructed');
-});
-reified.Type.prototype.on('deallocate', function(){
-  console.log(this.constructor.name + ' deallocated');
-});
-```
-Which would emit those events for __every single type__.
-
-
 
 
 ## TODO

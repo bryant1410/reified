@@ -12,7 +12,9 @@ var libs = [
   'struct',
   'array',
   'bitfield',
-  'index'
+  'pointer',
+  'string',
+  'index',
 ].map(function(name){
   return wrap('./'+name, load('../lib/'+name+'.js'));
 });
@@ -20,8 +22,6 @@ var libs = [
 function wrap(name, code){
   return wrapper.replace(/\/\*NAME\*\//g, name).replace(/\/\*CONTENT\*\//g, code);
 }
-
-libs.unshift(wrap('events', load('./event-emitter2.js')));
 
 var output = [
   'var reified = function(global, imports){',
