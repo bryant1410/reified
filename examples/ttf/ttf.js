@@ -106,13 +106,12 @@ var LongDateTime = StructT('LongDateTime', {
   hi: Uint32
 });
 
-var Tag = CharT(4);
+var Tag = CharT(4).typeDef('Tag');
 
 var Version = ArrayT('Version', Uint8, 4);
-
-Version.prototype.reify = function(){
+Version.reifier(function(reify){
   return this.join('');
-}
+});
 
 // ###############################################################################
 // ### FontIndex starts the file and tells the number of Tables in the Index  ####
@@ -120,27 +119,27 @@ Version.prototype.reify = function(){
 
 
 var FontIndex = StructT('FontIndex', {
-  version    : ArrayT('TTFVersion', 'Uint8', 4),
+  version    : Uint8[4].typeDef('TTFVersion'),
   tableCount : Uint16,
   range      : Uint16,
   selector   : Uint16,
   shift      : Uint16
 });
 
-FontIndex.fields.version.prototype.reify = function(){
+reified.reifier('TTFVersion', function(reify){
   var val =  this.join('');
   return val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
-}
+});
 
 // ######################################################################
 // ### After the FontIndex are TableHeads with pointers to each table ###
 // ######################################################################
 
 var TableHead = StructT('Table', {
-  tag        : Tag,
-  checksum   : Uint32,
-  contents   : reified.VoidPtr,
-  length     : Uint32
+  tag      : Tag,
+  checksum : Uint32,
+  contents : reified.VoidPtr,
+  length   : Uint32
 });
 
 var TableTypes = {};
@@ -184,30 +183,30 @@ var UnicodePages = StructT('UnicodePages', labels.unicodeBlocks.reduce(function(
 
   ret[index] = BitfieldT('UnicodePages'+index, blocks, 4);
 
-  ret[index].prototype.reify = function(){
-    return flatten(reified.reify(this).map(function(s){
+  ret[index].reifier(function(reify){
+    return flatten(reify().map(function(s){
       return s.split(',').map(function(ss){
         return labels.unicodeRanges[ss];
       });
     }));
-  }
+  });
 
   return ret;
 }, {}));
 
-UnicodePages.prototype.reify = function(){
+UnicodePages.reifier(function(reify){
   // flattens all the pages into a single array
-  var ret = reified.reify(this);
+  var ret = reify();
   return Object.keys(ret).reduce(function(r,s){
     return r.concat(ret[s]);
   }, []).sort();
-}
+});
 
 TableTypes['OS/2'] = StructT('OS2', {
   version      : Uint16,
   avgCharWidth : Int16,
-  weightClass  : Uint16,
-  widthClass   : Uint16,
+  weightClass  : Uint16.typeDef('WeightClass'),
+  widthClass   : Uint16.typeDef('WidthClass'),
   typer        : Uint16,
   subscript    : Metrics,
   superscript  : Metrics,
@@ -237,13 +236,13 @@ TableTypes['OS/2'] = StructT('OS2', {
   maxContext   : Uint16
 });
 
-TableTypes['OS/2'].prototype.reify = function(){
-  var val = reified.reify(this);
-  val.weightClass = labels.weights[val.weightClass / 100 - 1];
-  val.widthClass = labels.widths[val.widthClass - 1];
-  val.vendorID in vendors && (val.vendorID = vendors[val.vendorID]);
-  return val;
-};
+reified.reifier('WeightClass', function(reify){
+  return labels.weights[this / 100 - 1];
+});
+
+reified.reifier('WidthClass', function(reify){
+  return labels.widths[this - 1];
+})
 
 
 
