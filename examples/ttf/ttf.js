@@ -16,6 +16,8 @@ var reified   = require('reified'),
     BitfieldT = reified.BitfieldType,
     StructT   = reified.StructType,
     ArrayT    = reified.ArrayType,
+    CharT     = reified.CharType,
+    PointerT  = reified.PointerType,
     NumT      = reified.NumericType,
     Int8      = NumT.Int8,
     Int16     = NumT.Int16,
@@ -43,12 +45,13 @@ function Font(buffer, filename){
 
   // FontIndex is the entry point
   this.index = new FontIndex(buffer);
+  this.tables = new Table[this.index.tableCount](buffer, this.index.bytes);
   //inspect(this.index.constructor);
   //inspect(this.index)
   //var reified = this.index.reify(true);
   
   //inspect(this.index)
-  inspect(this.index.reify())
+  inspect(this)
 }
 
 Font.fontFolder = ({
@@ -74,10 +77,10 @@ Font.load = function load(filename){
 var TTFVersion = new ArrayT('TTFVersion', Uint8, 4);
 
 // interceptor on reify that translates the value
-TTFVersion.prototype.on('reify', function(val){
-  val = val.join('');
-  this.reified = val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
-});
+// TTFVersion.prototype.on('reify', function(val){
+//   val = val.join('');
+//   this.reified = val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
+// });
 
 
 // ###############################################################################
@@ -94,51 +97,42 @@ var FontIndex = new StructT('FontIndex', {
 
 // On construct we can inspect the tableCount provided by FontIndex and then add in
 // the Index, which is an array o
-FontIndex.prototype.on('construct', function(){
-  Index(this.tableCount.reify(), this);
-});
+// FontIndex.prototype.on('construct', function(){
+//   Index(this.tableCount.reify(), this);
+// });
 
 
 
 // A Tag is a 4 byte string label. reified needs some built in string types
 
-var Tag = new ArrayT('Tag', Uint8, 4);
-
-Tag.prototype.on('reify', function(val){
-  this.reified = val.map(function(s){
-    return String.fromCharCode(s);
-  }).join('');
-});
-
-
-
+var Tag = new CharT(4);
 
 
 var Table = new StructT('Table', {
   tag        : Tag,
   checksum   : Uint32,
-  byteOffset : Uint32,
+  byteOffset : reified.VoidPtr,
   length     : Uint32
 });
 
 // On table construct we can map the byteOffset pointer to the data location and initialize a struct on it
-Table.prototype.on('construct', function(){
-  var tag = this.tag.reify();
-  switch (tag) {
-    case 'OS/2':
-      // this is a pointer, there needs to be a way to represent this
-      this.table = new OS2(this._data, this.byteOffset.reify());
-      break;
-    default:
-  }
-});
+// Table.prototype.on('construct', function(){
+//   var tag = this.tag.reify();
+//   switch (tag) {
+//     case 'OS/2':
+//       // this is a pointer, there needs to be a way to represent this
+//       this.table = new OS2(this._data, this.byteOffset.reify());
+//       break;
+//     default:
+//   }
+// });
 
 // on reify we have to bring the values together manually due to a lack of pointer support in reified
-Table.prototype.on('reify', function(){
-  if (this.table) {
-    this.reified.table = this.table.reify();
-  }
-})
+// Table.prototype.on('reify', function(){
+//   if (this.table) {
+//     this.reified.table = this.table.reify();
+//   }
+// })
 
 
 
@@ -147,7 +141,7 @@ Table.prototype.on('reify', function(){
 // ####################################################################################
 
 function Index(tableCount, fontIndex){
-  var TableIndex = new ArrayT('TableIndex', Table, tableCount);
+ 
 
   TableIndex.prototype.on('reify', function(val){
     this.reified = val.reduce(function(ret, item){
@@ -209,17 +203,17 @@ var PANOSE = new StructT('PANOSE', labels.panose);
 
 var UnicodePages = new StructT('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
   ret[index] = new BitfieldT('UnicodePages'+index, blocks, 4);
-  ret[index].prototype.on('reify', function(val){
-    this.reified = flatten(val.map(function(s){
-      return s.split(',').map(function(ss){ return labels.unicodeRanges[ss] });
-    }));
-  });
+  // ret[index].prototype.on('reify', function(val){
+  //   this.reified = flatten(val.map(function(s){
+  //     return s.split(',').map(function(ss){ return labels.unicodeRanges[ss] });
+  //   }));
+  // });
   return ret;
 }, {}));
 
-UnicodePages.prototype.on('reify', function(val){
-  this.reified = flatten(Object.keys(val).map(function(s){ return val[s] })).filter(Boolean);
-});
+// UnicodePages.prototype.on('reify', function(val){
+//   this.reified = flatten(Object.keys(val).map(function(s){ return val[s] })).filter(Boolean);
+// });
 
 
 var Point = new StructT('Point', {
@@ -275,12 +269,12 @@ var OS2 = new StructT('OS2', {
   breakChar    : Uint16,
   maxContext   : Uint16
 });
-
-OS2.prototype.on('reify', function(val){
-  val.weightClass = labels.weights[val.weightClass / 100 - 1];
-  val.widthClass = labels.widths[val.widthClass - 1];
-  val.vendorID in vendors && (val.vendorID = vendors[val.vendorID]);
-});
+console.log(OS2);
+// OS2.prototype.on('reify', function(val){
+//   val.weightClass = labels.weights[val.weightClass / 100 - 1];
+//   val.widthClass = labels.widths[val.widthClass - 1];
+//   val.vendorID in vendors && (val.vendorID = vendors[val.vendorID]);
+// });
 
 
 
