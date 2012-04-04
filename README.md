@@ -8,8 +8,7 @@ For node, you can simply use npm to install it/
 ```
 npm install reified
 ```
-
-For browsers there is now a rough combined version which will be improved over time. It's not tested at all but it is known to work in many/most browsers with ArrayBuffer support.
+Browser support works naturally in V8 and with the help of a DataView polyfill for Firfox. Therefore it should work without issue in any browser supporting Typed Arrays.
 
 ## Overview
 
