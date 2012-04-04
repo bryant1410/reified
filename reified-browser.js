@@ -264,7 +264,6 @@ Object.defineProperty(module, 'exports', {
 
 "use strict";
 
-var DataBuffer  = require('./buffer');
 var utility    = require('./utility');
 var isObject   = utility.isObject;
 
@@ -272,12 +271,13 @@ var hasProto = !!Function.__proto__;
 var types = {};
 
 
-module.exports = {
+var exp = exports = module.exports = {
   Type: Type,
   Subtype: Subtype,
   OpaqueType: OpaqueType,
   lookupType: lookupType,
   registerType: registerType,
+  DataBuffer: require('./buffer'),
   types: types,
   isBuffer: isBuffer,
   api: api,
@@ -293,7 +293,7 @@ var hidden = { configurable: true, writable: true, value: 0 };
 
 
 function isBuffer(o){
-  return DataBuffer.isBuffer(o) || DataBuffer.isDataBuffer(o);
+  return exp.DataBuffer.isBuffer(o) || exp.DataBuffer.isDataBuffer(o);
 }
 
 
@@ -408,6 +408,17 @@ copy({
   typeDef: function typeDef(name){
     var iface = createInterface(name, ifaceMap.get(this));
     return Super(iface, this);
+  },
+  reifier: function reifier(handler){
+    var oldReifier = this.prototype.reify;
+    if (!handler) {
+      return oldReifier;
+    } else {
+      this.prototype.reify = function reify(){
+        var self = this;
+        return handler.call(this, function(){ return oldReifier.call(self) });
+      }
+    }
   }
 }, Type);
 
@@ -480,12 +491,12 @@ var Data = Type.prototype = {
   toString: function toString(){ return '[object '+this.constructor.displayName+']' },
   rebase: function rebase(data){
     if (data == null) {
-      data = new DataBuffer(this.bytes);
+      data = new exp.DataBuffer(this.bytes);
       data.fill(0);
     } else if (data._data) {
-      data = new DataBuffer(data._data);
+      data = new exp.DataBuffer(data._data);
     } else {
-      data = new DataBuffer(data);
+      data = new exp.DataBuffer(data);
     }
     api(this, '_data', data);
   },
@@ -500,6 +511,9 @@ var Data = Type.prototype = {
   },
   cast: function cast(type, align){
     if (typeof (type = lookupType(type)) === 'string') throw new TypeError('Unknown type "'+type+'"');
+    if (this instanceof Opaque) {
+      return new type(this._data, this._offset);
+    }
     if (type.bytes < this.bytes) throw new RangeError('Tried to cast to a smaller size "'+type.name+'"');
     if (this._data.length < type.bytes) throw new RangeError('Type is bigger than this buffer: "'+type.name+'"');
     align = (type.bytes === this.bytes || !align) ? 0 : align < 0 ? this.bytes-type.bytes : +align;
@@ -535,6 +549,7 @@ registerType('Opaque', Opaque);
 inspectors(Opaque, 'Opaque');
 api(Opaque, 'displayName', 'Opaque');
 
+Opaque.bytes = Opaque.prototype.bytes = 0;
 Opaque.prototype.DataType = 'opaque';
 Opaque.prototype.reify = function reify(){
   //return this._data;
@@ -675,17 +690,6 @@ function NumericType(name, bytes){
 
   NumericT.prototype = {
     Subtype: name,
-    write: function write(v){
-      this._data['write'+name](this._offset, checkType(name, v));
-      return this;
-    },
-    reify: function reify(deallocate){
-      var val = this.reified = this._data['read'+name](this._offset);
-      //this.emit('reify', val);
-      val = this.reified;
-      delete this.reified;
-      return val;
-    },
   };
 
   return NumericSubtype(name, bytes, NumericT);
@@ -696,14 +700,27 @@ function NumericType(name, bytes){
 // ### NumericType Data ###
 // ########################
 
+function reify(deallocate){
+  return this._data['read'+this.Subtype](this._offset);
+}
+
+function write(v){
+  this._data['write'+this.Subtype](this._offset, checkType(this.Subtype, v));
+  return this;
+}
+
 genesis.Type(NumericType, {
   DataType: 'numeric',
-  fill: function fill(v){ this.write(0, v || 0) },
+  fill: function fill(v){
+    write.call(this, v || 0);
+  },
+  reify: reify,
+  write: write,
   valueOf: function valueOf(){
-    return this.reify();
+    return reify.call(this);
   },
   toString: function toString(){
-    return String(this.reify());
+    return String(reify.call(this));
   },
 });
 
@@ -1217,7 +1234,6 @@ Object.defineProperty(module, 'exports', {
 "use strict";
 
 var genesis = require('./genesis');
-var DataBuffer  = require('./buffer');
 var numeric = require('./numeric');
 var PointerSubtype = genesis.Subtype.bind(PointerType);
 
@@ -1303,18 +1319,23 @@ function initPointee(target, Type, pointee){
     }
   } else {
     address = target.address.reify();
+    pointee = new Type(target.memory);
   }
   Object.defineProperty(target, 'pointee', {
     enumerable: true, configurable: true,
     get: function(){
-      if (target.address.reify() !== address) {
-        pointee.realign(address);
+      var newAddr = target.address.reify();
+      if (newAddr !== address) {
+        pointee.realign(newAddr);
+        address = newAddr;
       }
       return pointee;
     },
     set: function(v){
-      if (target.address.reify() !== address) {
-        pointee.realign(address);
+      var newAddr = target.address.reify();
+      if (newAddr !== address) {
+        pointee.realign(newAddr);
+        address = newAddr;
       }
       pointee.write(v);
     }
@@ -1386,7 +1407,6 @@ Object.defineProperty(module, 'exports', {
 "use strict";
 
 var genesis = require('./genesis');
-var DataBuffer  = require('./buffer');
 var numeric = require('./numeric');
 var ArrayType = require('./array');
 var CharSubtype = genesis.Subtype.bind(CharType);
@@ -1433,7 +1453,7 @@ function CharType(data, offset, value){
 
   if (!(bytes in cache)) {
     var CharArray = cache[bytes] = CharSubtype('CharArray'+bytes, bytes, function CharArray(data, offset, value){
-      if (!data) data = new DataBuffer(this.bytes);
+      if (!data) data = new genesis.DataBuffer(this.bytes);
       this.rebase(data);
       genesis.api(this, '_offset', offset || 0);
 
@@ -1449,7 +1469,7 @@ function CharType(data, offset, value){
   }
 
   if (data || value) {
-    if (!data) data = new DataBuffer(bytes || value);
+    if (!data) data = new genesis.DataBuffer(bytes || value);
     return new CharArray(data, offset, value);
   } else {
     return CharArray;
@@ -1543,7 +1563,6 @@ Object.defineProperty(module, 'exports', {
 "use strict";
 
 var genesis      = require('./genesis');
-var DataBuffer   = require('./buffer');
 var NumericType  = require('./numeric');
 var StructType   = require('./struct');
 var ArrayType    = require('./array');
@@ -1560,15 +1579,10 @@ function reified(type, subject, size, values){
     return new type(subject, size, values);
   } else {
     subject = genesis.lookupType(subject);
-    if (!subject) {
-      if (type && type.name === 'CharArrayT') {
-      }
+    if (!subject || type.Class === 'Type' && !subject) {
       return type
     }
     if (subject === 'Char') return new CharType(type);
-    if (typeof type === 'string') {
-      if (subject.Class === 'Type') return subject.rename(type);
-    }
     if (typeof subject === 'string' || subject.Class === 'Type') {
       return new reified.ArrayType(type, subject, size);
     } else if (typeof type === 'undefined') {
@@ -1613,6 +1627,12 @@ reified.reify = function reify(data){
   return proto.reify.call(data);
 }
 
+reified.reifier = function reifier(type, handler){
+  type = reified(type);
+  type.reifier(handler);
+  return type;
+}
+
 reified.isType = function isType(o){ return genesis.Type.isPrototypeOf(o) }
 reified.isData = function isData(o){ return genesis.Type.prototype.isPrototypeOf(o) }
 
@@ -1620,11 +1640,11 @@ Object.defineProperty(reified, 'defaultEndian', {
   enumerable: true,
   configurable: true,
   get: function(){
-    return DataBuffer.prototype.endianness;
+    return genesis.DataBuffer.prototype.endianness;
   },
   set: function(v){
     if (v !== 'LE' && v !== 'BE') throw new Error('Endianness must be "BE" or "LE"');
-    DataBuffer.prototype.endianness = v;
+    genesis.DataBuffer.prototype.endianness = v;
   }
 });
 
@@ -1642,7 +1662,7 @@ genesis.api(reified, {
   StructType:   StructType,
   ArrayType:    ArrayType,
   BitfieldType: BitfieldType,
-  DataBuffer:   DataBuffer,
+  DataBuffer:   genesis.DataBuffer,
   CharType:     CharType,
   PointerType:  PointerType,
   OpaqueType:   OpaqueType,
