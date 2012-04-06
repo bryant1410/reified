@@ -16,7 +16,6 @@ test('constructor properties', function(t){
   t.equal(ArrayT.name, 'Int8x10', 'named correctly');
   t.equal(ArrayT.bytes, 10, 'correct bytes');
   t.equal(ArrayT.__proto__, ArrayType.prototype, 'ctor inherits from ArrayType.prototype');
-  t.equal(ArrayT+'', '[object Int8x10Type]', 'toString shows class "Type"');
   t.equal(ArrayT.prototype.DataType, 'array', 'prototype is correct DataType');
   t.equal(ArrayT.count, 10, 'array is correct length');
   t.end();
