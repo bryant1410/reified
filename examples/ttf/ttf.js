@@ -54,7 +54,7 @@ function Font(buffer, filename){
     if (tag in TableTypes) {
       table.contents.cast(TableTypes[tag]);
     }
-  })
+  });
 
   inspect(this.reify());
 }
@@ -117,19 +117,20 @@ Version.reifier(function(reify){
 // ### FontIndex starts the file and tells the number of Tables in the Index  ####
 // ###############################################################################
 
+var TTFVersion = Uint8[4].typeDef('TTFVersion', function(reify){
+  var val = this.join('');
+  return val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
+});
 
-var FontIndex = StructT('FontIndex', {
-  version    : Uint8[4].typeDef('TTFVersion'),
+var FontIndex = new StructT('FontIndex', {
+  version    : TTFVersion,
   tableCount : Uint16,
   range      : Uint16,
   selector   : Uint16,
   shift      : Uint16
 });
 
-reified.reifier('TTFVersion', function(reify){
-  var val =  this.join('');
-  return val === '0100' ? 'TrueType' : val === 'OTTO' ? 'OpenType' : 'Unknown';
-});
+FontIndex.version
 
 // ######################################################################
 // ### After the FontIndex are TableHeads with pointers to each table ###
@@ -236,31 +237,31 @@ TableTypes['OS/2'] = StructT('OS2', {
   maxContext   : Uint16
 });
 
-reified.reifier('WeightClass', function(reify){
-  return labels.weights[this / 100 - 1];
-});
+// reified.reifier('WeightClass', function(reify){
+//   return labels.weights[this / 100 - 1];
+// });
 
-reified.reifier('WidthClass', function(reify){
-  return labels.widths[this - 1];
-})
-
-
+// reified.reifier('WidthClass', function(reify){
+//   return labels.widths[this - 1];
+// })
 
 
-var NameIndex = StructT('NameIndex', {
-  format     : Uint16,
-  length     : Uint16,
-  contents : Uint16
-});
 
-var NameRecord = StructT('NameRecord', {
-  platformID : Uint16,
-  encodingID : Uint16,
-  languageID : Uint16,
-  nameID     : Uint16,
-  length     : Uint16,
-  contents : Uint16,
-});
+
+// var NameIndex = StructT('NameIndex', {
+//   format     : Uint16,
+//   length     : Uint16,
+//   contents : Uint16
+// });
+
+// var NameRecord = StructT('NameRecord', {
+//   platformID : Uint16,
+//   encodingID : Uint16,
+//   languageID : Uint16,
+//   nameID     : Uint16,
+//   length     : Uint16,
+//   contents : Uint16,
+// });
 
 //console.log(Font.listFonts());
 Font.load('DejaVuSansMono.ttf');
