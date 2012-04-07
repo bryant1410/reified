@@ -106,15 +106,15 @@ var Metrics = StructT('Metrics', {
   position: Point
 });
 
-var LongDateTime = StructT('LongDateTime', {
-  lo: Uint32,
-  hi: Uint32
+var LongDateTime = reified('Uint64').typeDef('LongDateTime', function(reify){
+  return new Date((reify()[1] - 2082844800)*1000);
+  //return nw Date( - 208282680000);
 });
+//Date represented in number of seconds since 12:00 midnight, January 1, 1904. The value is represented as a signed 64-bit integer.
 
 var Tag = CharT(4).typeDef('Tag');
 
-var Version = ArrayT('Version', Uint8, 4);
-Version.reifier(function(reify){
+var Version = ArrayT('Version', Uint8, 4).reifier(function(reify){
   return this.join('');
 });
 
@@ -248,7 +248,7 @@ TableTypes['OS/2'] = StructT('OS2', {
 var NameIndex = StructT('NameIndex', {
   format     : Uint16,
   length     : Uint16,
-  contents : Uint16
+  contents   : Uint16
 });
 
 var NameRecord = StructT('NameRecord', {
@@ -257,7 +257,7 @@ var NameRecord = StructT('NameRecord', {
   languageID : Uint16,
   nameID     : Uint16,
   length     : Uint16,
-  contents : Uint16,
+  contents   : Uint16,
 });
 
 //console.log(Font.listFonts());
