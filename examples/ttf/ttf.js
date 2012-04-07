@@ -96,8 +96,13 @@ var Point = StructT('Point', {
   y: Int16
 });
 
+var Dimensions = StructT('Dimensions', {
+  width: Int16,
+  height: Int16
+});
+
 var Metrics = StructT('Metrics', {
-  size: Point,
+  size: Dimensions,
   position: Point
 });
 
@@ -206,8 +211,8 @@ UnicodePages.reifier(function(reify){
 TableTypes['OS/2'] = StructT('OS2', {
   version      : Uint16,
   avgCharWidth : Int16,
-  weightClass  : Uint16.typeDef('WeightClass'),
-  widthClass   : Uint16.typeDef('WidthClass'),
+  weightClass  : Uint16.typeDef('WeightClass', function(){ return labels.weights[this / 100 - 1] }),
+  widthClass   : Uint16.typeDef('WidthClass', function(){ return labels.widths[this - 1] }),
   typer        : Uint16,
   subscript    : Metrics,
   superscript  : Metrics,
@@ -237,31 +242,23 @@ TableTypes['OS/2'] = StructT('OS2', {
   maxContext   : Uint16
 });
 
-// reified.reifier('WeightClass', function(reify){
-//   return labels.weights[this / 100 - 1];
-// });
-
-// reified.reifier('WidthClass', function(reify){
-//   return labels.widths[this - 1];
-// })
 
 
 
+var NameIndex = StructT('NameIndex', {
+  format     : Uint16,
+  length     : Uint16,
+  contents : Uint16
+});
 
-// var NameIndex = StructT('NameIndex', {
-//   format     : Uint16,
-//   length     : Uint16,
-//   contents : Uint16
-// });
-
-// var NameRecord = StructT('NameRecord', {
-//   platformID : Uint16,
-//   encodingID : Uint16,
-//   languageID : Uint16,
-//   nameID     : Uint16,
-//   length     : Uint16,
-//   contents : Uint16,
-// });
+var NameRecord = StructT('NameRecord', {
+  platformID : Uint16,
+  encodingID : Uint16,
+  languageID : Uint16,
+  nameID     : Uint16,
+  length     : Uint16,
+  contents : Uint16,
+});
 
 //console.log(Font.listFonts());
 Font.load('DejaVuSansMono.ttf');
