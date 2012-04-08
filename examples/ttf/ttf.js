@@ -1,10 +1,11 @@
+// This will work in a browser all the same, just need to package it up
+
 var fs = require('fs');
 var path = require('path');
 var exists = fs.existsSync || path.existsSync;
 
 var vendors = require('./vendors');
 var labels = require('./labels');
-
 
 
 module.exports = Font;
