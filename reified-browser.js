@@ -416,6 +416,10 @@ copy({
     }
     return iface;
   },
+  initializer: function initializer(handler){
+    this.prototype.init = handler;
+    return this;
+  },
   reifier: function reifier(handler){
     var oldReifier = this.prototype.reify;
     if (!handler) {
@@ -464,7 +468,7 @@ function createInterface(name, ctor, type){
     var count = name.match(/^[*]+/)[0].length;
     fnName = Array(count + 1).join('Ptr_') + fnName;
   }
-  var src = 'return function '+fnName+'(data, offset, values){ return Ctor.call(Object.create('+fnName+'.prototype), data, offset, values) }';
+  var src = 'return function '+fnName+'(data, offset, values){ return Ctor.call(Object.create('+fnName+'.prototype), data, offset, values).init() }';
   var iface = Function('Ctor', src)(ctor);
 
   ifaceMap.set(iface, ctor);
@@ -1232,12 +1236,7 @@ var PointerSubtype = genesis.Subtype.bind(PointerType);
 
 module.exports = PointerType;
 
-
-
-var AbsoluteAddress = numeric.Uint32.typeDef('AbsoluteAddress');
-var RelativeAddress = numeric.Uint32.typeDef('RelativeAddress', function(reify){
-  return this._offset.view.byteOffset - this._offset + +reify();
-});
+var Address = numeric.Uint32.typeDef('Address');
 
 
 // ###############################
@@ -1258,13 +1257,9 @@ function PointerType(name, pointeeType, addressType){
   }
 
   if (typeof addressType === 'string') {
-    switch (addressType ){
-      case 'absolute': addressType = AbsoluteAddress; break;
-      case 'relative': addressType = RelativeAddress; break;
-             default: addressType = genesis.lookupType(addressType);
-    }
+    addressType = genesis.lookupType(addressType);
   } else if (typeof addressType === 'undefined') {
-    addressType = AbsoluteAddress;
+    addressType = Address;
   }
 
   name = '*'+name;
@@ -1344,7 +1339,6 @@ function initPointee(target, Type, pointee){
   });
   return pointee;
 }
-
 
 
 // ########################
