@@ -142,9 +142,14 @@ DataBuffer.prototype = {
 
   typed: function(type, offset, length){
     type = ArrayBuffers[type+'Array'];
-    offset = toNum(offset);
-    length = toNum(length) || this.length / type.BYTES_PER_ELEMENT | 0;
-    return new type(this.view, offset, length)
+    if (arguments.length === 1) {
+      return new type(this.view);
+    } else if (arguments.length === 2) {
+      return new type(this.view, toNum(offset));
+    } else {
+      length = toNum(length) || (this.length / type.BYTES_PER_ELEMENT) | 0;
+      return new type(this.view, toNum(offset), length);
+    }
   },
 
   copy: function(target, targetOffset, start, end){
@@ -341,7 +346,7 @@ function lookupType(name, label){
     name = count[1];
     count = +count[2];
     if (name === 'Char') {
-      return new superTypes['CharArray'](count);
+      return createType('string', count);
     }
     if (typeof label === 'string') {
       return createType('array', label, lookupType(name), count);
@@ -389,7 +394,6 @@ function Super(ctor, superctor, proto){
   }
   ctor.prototype = proto || Object.create(superctor.prototype);
   ctor.prototype.constructor = ctor;
-  //ctor.prototype.super = superctor;
   return ctor;
 }
 
@@ -405,9 +409,12 @@ copy({
   //toString: function toString(){ return '[object '+this.name+'Type]' },
   isInstance: function isInstance(o){ return this.prototype.isPrototypeOf(o) },
   array: function array(n){ return createType('array', this, n) },
-  typeDef: function typeDef(name){
-    var iface = createInterface(name, ifaceMap.get(this));
-    return Super(iface, this);
+  typeDef: function typeDef(name, reifier){
+    var iface = Super(createInterface(name, ifaceMap.get(this)), this);
+    if (typeof reifier === 'function') {
+      iface.reifier(reifier);
+    }
+    return iface;
   },
   reifier: function reifier(handler){
     var oldReifier = this.prototype.reify;
@@ -418,6 +425,7 @@ copy({
         var self = this;
         return handler.call(this, function(){ return oldReifier.call(self) });
       }
+      return this;
     }
   }
 }, Type);
@@ -494,11 +502,14 @@ var Data = Type.prototype = {
       data = new exp.DataBuffer(this.bytes);
       data.fill(0);
     } else if (data._data) {
-      data = new exp.DataBuffer(data._data);
-    } else {
+      data = data._data;
+    } else if (exp.DataBuffer.isBuffer(data)) {
       data = new exp.DataBuffer(data);
     }
     api(this, '_data', data);
+  },
+  init: function init(ctor){
+    return this;
   },
   realign: function realign(offset){
     this._offset = +offset || 0;
@@ -680,7 +691,6 @@ function NumericType(name, bytes){
     if (value != null) {
       this.write(value);
     }
-    //this.emit('construct');
     return this;
   }
 
@@ -700,7 +710,7 @@ function NumericType(name, bytes){
 // ### NumericType Data ###
 // ########################
 
-function reify(deallocate){
+function reify(){
   return this._data['read'+this.Subtype](this._offset);
 }
 
@@ -716,19 +726,14 @@ genesis.Type(NumericType, {
   },
   reify: reify,
   write: write,
-  valueOf: function valueOf(){
-    return reify.call(this);
-  },
-  toString: function toString(){
-    return String(reify.call(this));
-  },
+  valueOf: reify,
+  toString: reify,
 });
 
 
 Object.keys(types).forEach(function(name){
   NumericType[name] = new NumericType(name, types[name]);
 });
-
 
 }({}, function(n){ return imports[n] });
 
@@ -780,8 +785,8 @@ function StructType(name, fields){
       values = data;
       data = null;
     }
-    this.rebase(data);
     genesis.api(this, '_offset', +offset || 0);
+    this.rebase(data);
 
     if (values) {
       Object.keys(values).forEach(function(field){
@@ -790,8 +795,8 @@ function StructType(name, fields){
      }, this);
     }
     return this;
-    //this.emit('construct');
   }
+
 
   StructT.fields = fields;
   StructT.offsets = offsets;
@@ -808,7 +813,6 @@ function initField(target, ctor, field){
     get: function(){ return block },
     set: function(v){
       if (v === null) {
-        //this.emit('deallocate', field);
         genesis.nullable(this, field);
         block = null;
       } else {
@@ -839,15 +843,11 @@ genesis.Type(StructType, {
   DataType: 'struct',
 
   reify: function reify(deallocate){
-    this.reified = this.constructor.keys.reduce(function(ret, field){
+    return  this.constructor.keys.reduce(function(ret, field){
       ret[field] = this[field] == null ? initField(this, this.constructor, field).reify(deallocate) : this[field].reify(deallocate);
       if (deallocate) this[field] = null;
       return ret;
     }.bind(this), {});
-    //this.emit('reify', this.reified);
-    var val = this.reified;
-    delete this.reified;
-    return val;
   },
 
   write: function write(o){
@@ -866,7 +866,6 @@ genesis.Type(StructType, {
 
   realign: function realign(offset, deallocate){
     this._offset = offset = +offset || 0;
-    // use realiagn as a chance to DEALLOCATE since everything is being reset essentially
     Object.keys(this).forEach(function(field){
       if (deallocate) this[field] = null;
       else this[field].realign(offset);
@@ -950,7 +949,6 @@ function initIndex(target, MemberType, index){
     get: function(){ return block },
     set: function(v){
       if (v === null) {
-        //this.emit('deallocate', index);
         genesis.nullable(this, index);
         block = null;
       } else {
@@ -1114,7 +1112,6 @@ function BitfieldType(name, flags, bytes){
       Object.keys(values).forEach(function(key){ this[key] = values[key] }, this);
     }
     return this;
-    //this.emit('construct');
   };
 
   BitfieldT.keys = flags;
@@ -1134,7 +1131,7 @@ function BitfieldType(name, flags, bytes){
   };
 
   var out = BitfieldSubtype(name, bytes, BitfieldT);
-  
+
   return defineFlags(out);
 }
 
@@ -1187,27 +1184,23 @@ genesis.Type(BitfieldType, {
     return this;
   },
   write: function write(v){
-    this._data['writeUint'+this.bytes*8](this._offset, v);
+    this._data['writeUint'+this.length](this._offset, v);
     return this;
   },
   read: function read(){
-    return this._data['readUint'+this.bytes*8](this._offset);
+    return this._data['readUint'+this.length](this._offset);
   },
   reify: function reify(deallocate){
     var flags = Object.keys(this.flags);
     if (flags.length) {
-        var val = this.reified = flags.reduce(function(ret, flag, i){
+        var val = flags.reduce(function(ret, flag, i){
           if (this[flag]) ret.push(flag);
         return ret;
       }.bind(this), []);
     } else {
       var val = this.map(function(v){ return v });
     }
-    //this.emit('reify', val);
-    val = this.reified;
-    delete this.reified;
     if (deallocate) {
-      //this.emit('deallocate');
       delete this._data;
       delete this._offset;
     }
@@ -1239,7 +1232,12 @@ var PointerSubtype = genesis.Subtype.bind(PointerType);
 
 module.exports = PointerType;
 
-var Address = numeric.Uint32.typeDef('Address');
+
+
+var AbsoluteAddress = numeric.Uint32.typeDef('AbsoluteAddress');
+var RelativeAddress = numeric.Uint32.typeDef('RelativeAddress', function(reify){
+  return this._offset.view.byteOffset - this._offset + +reify();
+});
 
 
 // ###############################
@@ -1260,9 +1258,13 @@ function PointerType(name, pointeeType, addressType){
   }
 
   if (typeof addressType === 'string') {
-    addressType = genesis.lookupType(addressType);
+    switch (addressType ){
+      case 'absolute': addressType = AbsoluteAddress; break;
+      case 'relative': addressType = RelativeAddress; break;
+             default: addressType = genesis.lookupType(addressType);
+    }
   } else if (typeof addressType === 'undefined') {
-    addressType = Address;
+    addressType = AbsoluteAddress;
   }
 
   name = '*'+name;
@@ -1342,6 +1344,7 @@ function initPointee(target, Type, pointee){
   });
   return pointee;
 }
+
 
 
 // ########################
@@ -1458,7 +1461,6 @@ function CharType(data, offset, value){
       genesis.api(this, '_offset', offset || 0);
 
       value && this.write(value);
-      //this.emit('construct');
       return this;
     });
     CharArray.bytes = bytes;
@@ -1517,7 +1519,6 @@ function Char(data, offset, value){
     this.write(value);
   }
   return this;
-  //this.emit('construct');
 }
 
 Char.prototype = {
@@ -1529,11 +1530,7 @@ Char.prototype = {
     return this;
   },
   reify: function reify(deallocate){
-    var val = this.reified =  ucs2(this._data['readUint'+this.bits](this._offset, 1));
-    //this.emit('reify', val);
-    val = this.reified;
-    delete this.reified;
-    return val;
+    return ucs2(this._data['readUint'+this.bits](this._offset, 1));
   },
   toNumber: function toNumber(v){
     return this._data['readUint'+this.bits](this._offset);
@@ -1655,21 +1652,6 @@ VoidPtr.prototype.reify = function(){
   return { type: VoidPtr, address: this.address.reify() };
 }
 
-// ## structures
-genesis.api(reified, {
-  Type:         genesis.Type,
-  NumericType:  NumericType,
-  StructType:   StructType,
-  ArrayType:    ArrayType,
-  BitfieldType: BitfieldType,
-  DataBuffer:   genesis.DataBuffer,
-  CharType:     CharType,
-  PointerType:  PointerType,
-  OpaqueType:   OpaqueType,
-  VoidPtr:      VoidPtr,
-  toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
-});
-
 
 
 function isSame(arr1, arr2){
@@ -1690,6 +1672,23 @@ var OctetString = new ArrayType('EightByteOctetString', 'Uint8', 8);
 function octets(){ return new OctetString(this._data, this._offset) }
 NumericType.Uint64.prototype.octets = octets;
 NumericType.Int64.prototype.octets = octets;
+
+
+
+// ## structures
+genesis.api(reified, {
+  Type:         genesis.Type,
+  NumericType:  NumericType,
+  StructType:   StructType,
+  ArrayType:    ArrayType,
+  BitfieldType: BitfieldType,
+  DataBuffer:   genesis.DataBuffer,
+  CharType:     CharType,
+  PointerType:  PointerType,
+  OpaqueType:   OpaqueType,
+  VoidPtr:      VoidPtr,
+  toString:     function toString(){ return '◤▼▼▼▼▼▼▼◥\n▶reified◀\n◣▲▲▲▲▲▲▲◢' },
+});
 
 
 }({}, function(n){ return imports[n] });
