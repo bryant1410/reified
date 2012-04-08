@@ -243,14 +243,23 @@ TableTypes['OS/2'] = StructT('OS2', {
 
 
 
-var NameIndex = StructT('NameIndex', {
+TableTypes.name = StructT('NameIndex', {
   format     : Uint16,
   length     : Uint16,
   contents   : Uint16
+}).initializer(function(){
+  var arr = NameRecord.array(this.length.reify());
+  this.items = new arr(this._data, this._offset + this.bytes);
+  return this;
+}).reifier(function(reify){
+  var ret = reify();
+  ret.items = this.items.reify();
+  return ret;
 });
 
+
 var NameRecord = StructT('NameRecord', {
-  platformID : Uint16,
+  platformID : Uint16.typeDef('PlatformID', function(reify){ return labels.platformID[reify()] }),
   encodingID : Uint16,
   languageID : Uint16,
   nameID     : Uint16,
