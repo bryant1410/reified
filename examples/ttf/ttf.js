@@ -9,8 +9,8 @@ var labels = require('./labels');
 
 module.exports = Font;
 
-// There's essentially type styles of usage. One which is more declarative like this
-// One where everything uses the `reified` function magic. It's mostly a matter of style.
+// There's two styles of usage: one which is more declarative like this,
+// and one where everything uses the `reified` function magic the resolve types
 
 var reified   = require('reified'),
     BitfieldT = reified.BitfieldType,
@@ -35,6 +35,13 @@ reified.defaultEndian = 'BE';
 
 var flatten = Function.apply.bind([].concat, []);
 function inspect(o){ console.log(require('util').inspect(o, false, 6)) }
+function flattener(reify){
+  // flattens all the pages into a single array
+  var ret = reify();
+  return Object.keys(ret).reduce(function(r,s){
+    return r.concat(ret[s]);
+  }, []).sort();
+}
 
 
 
@@ -106,15 +113,13 @@ var Metrics = StructT('Metrics', {
   position: Point
 });
 
-var LongDateTime = StructT('LongDateTime', {
-  lo: Uint32,
-  hi: Uint32
+var LongDateTime = reified('Uint64').typeDef('LongDateTime', function(reify){
+  return new Date((reify()[1] - 2082844800) * 1000);
 });
 
 var Tag = CharT(4).typeDef('Tag');
 
-var Version = ArrayT('Version', Uint8, 4);
-Version.reifier(function(reify){
+var Version = ArrayT('Version', Uint8, 4).reifier(function(reify){
   return this.join('');
 });
 
@@ -183,13 +188,11 @@ Object.keys(labels.panose).forEach(function(label){
   labels.panose[label] = BitfieldT(label, labels.panose[label], 1);
 });
 
-// ### Unicode pages are 4 bitfields mapping to blocks which map to ranges, labels.json ###
+// ### Unicode pages are 4 bitfields mapping to blocks which map to ranges, see labels.json ###
 var UnicodePages = StructT('UnicodePages', labels.unicodeBlocks.reduce(function(ret, blocks, index){
-  // custome reify function for mapping the code pages to their names, then flattening all the arrays
+  // custom reify function for mapping the code pages to their names, then flattening all the arrays
 
-  ret[index] = BitfieldT('UnicodePages'+index, blocks, 4);
-
-  ret[index].reifier(function(reify){
+  ret[index] = BitfieldT('UnicodePages'+index, blocks, 4).reifier(function(reify){
     return flatten(reify().map(function(s){
       return s.split(',').map(function(ss){
         return labels.unicodeRanges[ss];
@@ -198,15 +201,9 @@ var UnicodePages = StructT('UnicodePages', labels.unicodeBlocks.reduce(function(
   });
 
   return ret;
-}, {}));
+}, {})).reifier(flattener);
 
-UnicodePages.reifier(function(reify){
-  // flattens all the pages into a single array
-  var ret = reify();
-  return Object.keys(ret).reduce(function(r,s){
-    return r.concat(ret[s]);
-  }, []).sort();
-});
+
 
 TableTypes['OS/2'] = StructT('OS2', {
   version      : Uint16,
@@ -233,8 +230,9 @@ TableTypes['OS/2'] = StructT('OS2', {
   winTypograph : StructT('WindowsTypographic',
   { ascender     : Uint16,
     descender    : Uint16 }),
-  codePages1   : BitfieldT('CodePages1', labels.codePageNames[0], 4),
-  codePages2   : BitfieldT('CodePages2', labels.codePageNames[1], 4),
+  codePages    : StructT('CodePages', {
+    1            : BitfieldT('CodePages1', labels.codePageNames[0], 4),
+    2            : BitfieldT('CodePages2', labels.codePageNames[1], 4) }).reifier(flattener),
   xHeight      : Int16,
   capHeight    : Int16,
   defaultChar  : Uint16,
@@ -248,7 +246,7 @@ TableTypes['OS/2'] = StructT('OS2', {
 var NameIndex = StructT('NameIndex', {
   format     : Uint16,
   length     : Uint16,
-  contents : Uint16
+  contents   : Uint16
 });
 
 var NameRecord = StructT('NameRecord', {
@@ -257,7 +255,7 @@ var NameRecord = StructT('NameRecord', {
   languageID : Uint16,
   nameID     : Uint16,
   length     : Uint16,
-  contents : Uint16,
+  contents   : Uint16,
 });
 
 //console.log(Font.listFonts());
