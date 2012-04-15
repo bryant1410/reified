@@ -8,7 +8,7 @@ For node, you can simply use npm to install it/
 ```
 npm install reified
 ```
-Browser support works naturally in V8 and with the help of a DataView polyfill for Firfox. Therefore it should work without issue in any browser supporting Typed Arrays.
+Browser support works naturally in V8 and with the help of a DataView polyfill for Firefox. Therefore it should work without issue in any browser supporting Typed Arrays.
 
 ## Overview
 
