@@ -23,7 +23,7 @@ All beside the Type are optional. Buffer will be allocated to the struct's size 
 * `new reified('TypeName' || Type, buffer, offset, value)` - Constructs an instance of _‹Type›_ (`<Data>`). `new` is required. 
 * `reified.data('TypeName' || Type, buffer, offset, value)` - Same but doesn't require `new`.
 
-###_‹Type›_ creation
+### _‹Type›_ creation
 
 * _‹ArrayT›_    `reified('Uint8[10]')` - returns an _‹ArrayT›_ for the specified type and size
 * _‹ArrayT›_    `reified('Uint8[10][10][10]')` - arrays can be nested arbitrarily
